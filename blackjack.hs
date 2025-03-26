@@ -58,3 +58,16 @@ value hand = go (sortAcesLast hand) 0
             Ace         -> let aceValue = if (total + 11 > 21) || len xs > 0 then 1 else 11 
                            in  go xs (total + aceValue) -- An ace should be 1 if total + 11 > 21 or a second card (Ace) follows after (to prevent cases like: Jack, Ace, Ace being 22)
             _           -> go xs (total + 10)
+
+isBlackjack :: Hand -> Bool
+isBlackjack [] = False
+isBlackjack hand = len hand == 2 && value hand == 21
+
+gameOver :: Hand -> Bool
+gameOver [] = True
+gameOver hand = value hand > 21
+
+winner :: Hand -> Hand -> Player
+winner player bank | gameOver player || (value player <= value bank) = Bank
+                   | otherwise                                       = Guest
+
