@@ -15,10 +15,7 @@ data Player = Bank | Guest
 
 
 -- Smart constructors for Rank
-mkNumeric :: Integer -> Maybe Rank
-mkNumeric n | n >= 2 && n <= 10 = Just (Numeric n)
-            | otherwise         = Nothing
-
-mkNonNumeric :: Rank -> Maybe Rank
-mkNonNumeric rank = Just rank
-
+mkRank :: Rank -> Maybe Rank
+mkRank (Numeric n) | n >= 2 && n <= 10 = Just (Numeric n)
+                   | otherwise         = Nothing
+mkRank r = Just r
