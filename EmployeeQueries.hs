@@ -23,24 +23,19 @@ data Date = Date
   deriving (Show, Eq, Ord)
 
 
--- Smart Constructors
+-- Smart Constructors   
 mkDate :: Int -> Int -> Int -> Maybe Date
 mkDate year month day = 
       let
-            isYearValid               = year > 0 && year <= 2025
-            isMonthValid              = month > 0 && month < 13
-            isLeapYear                = year `mod` 4 == 0
-            isFebuary                 = month == 2
-            isMonthWithThirtyOneDays  = month `elem` ([x | x <- [1..7], x `mod` 2 /= 0] ++ [y | y <- [8..12], y `mod` 2 == 0])
-            isThirtyOneDaysMonthValid = day > 0 && day <= 31
-            isThirtyDaysMonthValid    = day > 0 && day <= 30
-            isDayValid                = case isMonthWithThirtyOneDays of
-                  True -> isThirtyOneDaysMonthValid -- Check for months which have 31 days
-                  _    -> case isLeapYear of        -- Check for months which have less than 31 days
-                        True -> if isFebuary then day > 0 && day <= 29 else isThirtyDaysMonthValid -- Leap Year Febuary
-                        _    -> if isFebuary then day > 0 && day <= 28 else isThirtyDaysMonthValid -- Non-Leap Year Febuary
+            isYearValid    = year > 0 && year <= 2025
+            isMonthValid   = month > 0 && month < 13
+            isLeapYear     = (year `mod` 400 == 0) || (year `mod` 100 /= 0 && year `mod` 4 == 0)
+            isKnuckleMonth = month `elem` [1, 3, 5, 7, 8, 10, 12]
+            isDayValid   | month == 2     = day > 0 && if isLeapYear then day <= 29 else day <= 28
+                         | isKnuckleMonth = day > 0 && day <= 31
+                         | otherwise      = day > 0 && day <= 30
       in
-            if (isDayValid && isMonthValid && isDayValid) then Just (Date year month day) else Nothing
+            if isYearValid && isMonthValid && isDayValid then Just (Date year month day) else Nothing
 
 
 --1.
