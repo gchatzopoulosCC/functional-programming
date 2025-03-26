@@ -71,3 +71,6 @@ gameOver hand = value hand > 21
 winner :: Hand -> Hand -> Player
 winner player bank | gameOver player || (value player <= value bank) = Bank
                    | otherwise                                       = Guest
+
+(<+) :: Hand -> Hand -> Hand
+(<+) first second = first ++ second
