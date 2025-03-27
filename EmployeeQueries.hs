@@ -28,7 +28,7 @@ data Date = Date
 mkDate :: Int -> Int -> Int -> Maybe Date
 mkDate year month day = 
       let
-            isYearValid    = year > 0 && year <= 2025
+            isYearValid    = year > 0
             isMonthValid   = month > 0 && month < 13
             isLeapYear     = (year `mod` 400 == 0) || (year `mod` 100 /= 0 && year `mod` 4 == 0)
             isKnuckleMonth = month `elem` [1, 3, 5, 7, 8, 10, 12]
@@ -121,7 +121,44 @@ main = prettyTenureGroups (employeesByTenure testEmployees)
 
 -- Test
 testEmployees :: [Employee]
-testEmployees = [Emp "E001" (Date 2020 3 15) (Just (Permit "P100" (Date 2023 3 15))) Nothing, Emp "E002" (Date 2021 6 10) (Just (Permit "P200" (Date 2024 6 10))) (Just (Date 2023 12 31)), Emp "E003" (Date 2022 1 5) Nothing Nothing, Emp "E004" (Date 2022 9 22) (Just (Permit "P400" (Date 2019 9 22))) Nothing, Emp "E005" (Date 2023 4 1) (Just (Permit "P500" (Date 2021 4 1))) (Just (Date 2024 4 1))]
+testEmployees = 
+  [ Emp "E001" (Date 2020 3 15)
+      (Just (Permit "P100" (Date 2023 3 15))) 
+      Nothing
+  , Emp "E002" (Date 2021 6 10) 
+      (Just (Permit "P200" (Date 2024 6 10))) 
+      (Just (Date 2023 12 31))
+  , Emp "E003" (Date 2022 1 5) 
+      Nothing 
+      Nothing
+  , Emp "E004" (Date 2022 9 22) 
+      (Just (Permit "P400" (Date 2025 9 22))) 
+      Nothing
+  , Emp "E005" (Date 2023 4 1) 
+      (Just (Permit "P500" (Date 2026 4 1))) 
+      (Just (Date 2024 4 1))]
+
+testEmployees2 :: [Employee]
+testEmployees2 = 
+  [ Emp "E001" (fromJust $ mkDate 2020 3 15) 
+      (Just $ Permit "P100" (fromJust $ mkDate 2023 3 15)) 
+      Nothing
+  , Emp "E002" (fromJust $ mkDate 2021 6 10)
+      (Just $ Permit "P200" (fromJust $ mkDate 2024 6 10))
+      (Just $ fromJust $ mkDate 2023 12 31)
+  , Emp "E003" (fromJust $ mkDate 2022 1 5)
+      Nothing
+      Nothing
+  , Emp "E004" (fromJust $ mkDate 2022 9 22)
+      (Just $ Permit "P400" (fromJust $ mkDate 2025 9 22))
+      Nothing
+  , Emp "E005" (fromJust $ mkDate 2023 4 1)
+      (Just $ Permit "P500" (fromJust $ mkDate 2026 4 1))
+      (Just $ fromJust $ mkDate 2024 4 1)
+  ]
+  where
+    fromJust (Just x) = x
+    fromJust Nothing  = error "Invalid date in test data"
 
 
 -- Print
