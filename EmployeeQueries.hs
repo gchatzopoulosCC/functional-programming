@@ -18,8 +18,8 @@ data Employee = Emp
 data Date = Date 
   { 
     year  :: Int,
-    month :: Int, --month should not exceed 12
-    day   :: Int  --no invalid days
+    month :: Int,
+    day   :: Int
   }
   deriving (Show, Eq, Ord)
 
@@ -37,11 +37,6 @@ mkDate year month day =
                          | otherwise      = day > 0 && day <= 30
       in
             if isYearValid && isMonthValid && isDayValid then Just (Date year month day) else Nothing
-
-
--- Main
-main :: IO ()
-main = prettyTenureGroups (employeesByTenure testEmployees)
 
 
 -- Helper
@@ -74,7 +69,7 @@ yearDiff date1 date2 = year date2 - year date1
 
 
 
--- 1
+-- 1.
 employeesWithOverlappingPermits :: [Employee] -> [(EId, EId)]
 employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   emp1 <- emps,
@@ -86,7 +81,7 @@ employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   ]
 
 
--- 2
+-- 2.
 employeesByTenure :: [Employee] -> [(Int, [Employee])]
 employeesByTenure emps = map assignTenure (groupByTenure emps)
 
@@ -97,12 +92,12 @@ longestWorkingEmployee []   = Nothing
 longestWorkingEmployee emps = Just (maximumBy (\emp1 emp2 -> compare (calculateTenure emp1) (calculateTenure emp2)) emps)
 
 
---4. confident
+--4.
 withExpiredPermit :: [Employee] -> Date -> [EId]
 withExpiredPermit emps currDate = [empId emp | emp <- emps, Just p <- [permit emp], currDate > expiryDate p]
 
 
---5. confident
+--5.
 avgYearsWorked :: [Employee] -> Double
 avgYearsWorked [] = 0
 avgYearsWorked emps = if totalEmployees == 0
@@ -114,6 +109,14 @@ avgYearsWorked emps = if totalEmployees == 0
    tenures emps  = fromIntegral $ sum [calculateTenure emp | emp <- emps]
 
 
+
+--------------------------------------------------------------------
+-- Testing purposes
+--------------------------------------------------------------------
+
+-- Main
+main :: IO ()
+main = prettyTenureGroups (employeesByTenure testEmployees)
 
 
 -- Test
