@@ -1,4 +1,5 @@
 import Data.List (sortOn, groupBy, maximumBy)
+import Text.Printf (printf)
 
 type EId = String
 
@@ -38,7 +39,32 @@ mkDate year month day =
             if isYearValid && isMonthValid && isDayValid then Just (Date year month day) else Nothing
 
 
---1.
+-- Main
+main :: IO ()
+main = prettyTenureGroups (employeesByTenure testEmployees)
+
+
+-- Helper
+currDate :: Date
+currDate = Date 2025 3 26 
+
+-- Check if two employes work the same years
+(===) :: Employee -> Employee -> Bool
+(===) emp1 emp2 = (year currDate - year (joinedOn emp1)) == (year currDate - year (joinedOn emp2))
+
+groupByTenure :: [Employee] -> [[Employee]]
+groupByTenure emps = groupBy (===) (sortOn tenureYears emps)
+      where tenureYears emp = year currDate - year (joinedOn emp) -- Sort for better grouping
+
+assignTenure :: [Employee] -> (Int, [Employee])
+assignTenure emps  = 
+      let getYear  = year (joinedOn (head emps))
+          yearDiff = (year currDate) - getYear
+      in  (yearDiff, emps)
+
+
+
+-- 1
 employeesWithOverlappingPermits :: [Employee] -> [(EId, EId)]
 employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   emp1 <- emps,
@@ -50,43 +76,26 @@ employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   ]
 
 
---2. ehh
+-- 2
 employeesByTenure :: [Employee] -> [(Int, [Employee])]
-employeesByTenure emps = map formatGroup (groupByTenure (sortByTenure (assignTenure emps)))
+employeesByTenure emps = map assignTenure (groupByTenure emps)
 
-assignTenure :: [Employee] -> [(Int, Employee)]
-assignTenure emps = [(calculateTenure emp, emp) | emp <- emps]
-
-sortByTenure :: [(Int, Employee)] -> [(Int, Employee)]
-sortByTenure = sortOn fst
-
-groupByTenure :: [(Int, Employee)] -> [[(Int, Employee)]]
-groupByTenure = groupBy (\(t1, _) (t2, _) -> t1 == t2)
-
-formatGroup :: [(Int, Employee)] -> (Int, [Employee])
-formatGroup group = (fst (head group), map snd group)
-
-currDate :: Date
-currDate = Date 2025 3 22
-
-yearDiff :: Date -> Date -> Int
-yearDiff date1 date2 = year date2 - year date1
-
-calculateTenure :: Employee -> Int
-calculateTenure emp =
-  let endDate = case leftOn emp of
-                    Just date -> date
-                    Nothing   -> currDate
-  in yearDiff (joinedOn emp) endDate
 
 --3.
 longestWorkingEmployee :: [Employee] -> Maybe Employee
 longestWorkingEmployee []   = Nothing
 longestWorkingEmployee emps = Just (maximumBy (\emp1 emp2 -> compare (calculateTenure emp1) (calculateTenure emp2)) emps)
 
+
 --4. confident
-withExpiredPermit :: [Employee] -> Date -> [EId]
-withExpiredPermit emps currDate = [empId emp | emp <- emps, Just p <- [permit emp], currDate > expiryDate p]
+withExpiredPermit :: [Employee] -> Maybe Date -> [EId]
+withExpiredPermit emps currDate = 
+      [empId emp | 
+      emp <- emps, 
+      Just p <- [permit emp], 
+      Just expiry <- [expiryDate p], 
+      Just curr <- [currDate], curr > expiry]
+
 
 --5. confident
 avgYearsWorked :: [Employee] -> Double
@@ -99,48 +108,49 @@ avgYearsWorked emps = if totalEmployees == 0
    tenures []    = 0
    tenures emps  = fromIntegral $ sum [calculateTenure emp | emp <- emps]
 
+
+
+
+-- Test
 testEmployees :: [Employee]
-testEmployees = 
-  [
-    Emp { empId = "E001"
-        , joinedOn = Date 2022 1 10
-        , permit = Just (Permit "P100" (Date 2024 1 10))
-        , leftOn = Nothing
-        }
-    
-  , Emp { empId = "E002"
-        , joinedOn = Date 2023 5 15
-        , permit = Just (Permit "P200" (Date 2025 6 20))
-        , leftOn = Just (Date 2024 6 12)
-        }
-    
-  , Emp { empId = "E003"
-        , joinedOn = Date 2022 12 1
-        , permit = Just (Permit "P300" (Date 2024 8 30))
-        , leftOn = Nothing
-        }
-    
-  , Emp { empId = "E004"
-        , joinedOn = Date 2025 7 1
-        , permit = Just (Permit "P400" (Date 2027 7 1))
-        , leftOn = Nothing
-        }
-    
-  , Emp { empId = "E005"
-        , joinedOn = Date 2022 3 15
-        , permit = Nothing
-        , leftOn = Nothing
-        }
-    
-  , Emp { empId = "E006"
-        , joinedOn = Date 2024 1 10
-        , permit = Just (Permit "P600" (Date 2026 1 10))
-        , leftOn = Nothing
-        }
-    
-  , Emp { empId = "E007"
-        , joinedOn = Date 2021 1 08
-        , permit = Just (Permit "P700" (Date 2023 1 5))
-        , leftOn = Just (Date 2022 11 30)
-        }
+testEmployees = [Emp "E001" (Date 2020 3 15) (Just (Permit "P100" (Date 2023 3 15))) Nothing, Emp "E002" (Date 2021 6 10) (Just (Permit "P200" (Date 2024 6 10))) (Just (Date 2023 12 31)), Emp "E003" (Date 2022 1 5) Nothing Nothing, Emp "E004" (Date 2022 9 22) (Just (Permit "P400" (Date 2019 9 22))) Nothing, Emp "E005" (Date 2023 4 1) (Just (Permit "P500" (Date 2021 4 1))) (Just (Date 2024 4 1))]
+
+
+-- Print
+prettyTenureGroups :: [(Int, [Employee])] -> IO ()
+prettyTenureGroups groups = do
+  putStrLn "==== Employees by Tenure ===="
+  mapM_ printGroup groups
+  where
+    printGroup (years, emps) = do
+      putStrLn $ printf "\n---- %d Year%s Tenure (%d employees) ----" 
+        years 
+        (if years /= 1 then "s" else "") 
+        (length emps)
+      mapM_ (putStr . prettyEmployee) emps
+
+prettyEmployeeGroup :: [[Employee]] -> IO ()
+prettyEmployeeGroup groups = do
+  putStrLn "==== Employee Groups ===="
+  mapM_ printGroup (zip [1..] groups)
+  where
+    printGroup (n, emps) = do
+      putStrLn $ "\n---- Group " ++ show n ++ " (" ++ show (length emps) ++ " employees) ----"
+      mapM_ (putStr . prettyEmployee) emps
+
+-- Modified version of your existing prettyEmployee
+prettyEmployee :: Employee -> String
+prettyEmployee emp = unlines
+  [ "  Employee ID: " ++ empId emp
+  , "  Joined On:   " ++ prettyDate (joinedOn emp)
+  , "  Permit:      " ++ case permit emp of
+                          Nothing -> "None"
+                          Just p  -> number p ++ " (expires " ++ prettyDate (expiryDate p) ++ ")"
+  , "  Status:      " ++ case leftOn emp of
+                          Nothing -> "Active"
+                          Just d  -> "Left on " ++ prettyDate d
+  , ""
   ]
+
+prettyDate :: Date -> String
+prettyDate (Date y m d) = printf "%04d-%02d-%02d" y m d
