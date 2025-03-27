@@ -45,17 +45,15 @@ currDate = Date 2025 3 26
 
 -- Check if two employes work the same years
 (===) :: Employee -> Employee -> Bool
-(===) emp1 emp2 = (year currDate - year (joinedOn emp1)) == (year currDate - year (joinedOn emp2))
+(===) emp1 emp2 = yearDiff (joinedOn emp1) currDate == yearDiff (joinedOn emp2) currDate
 
 groupByTenure :: [Employee] -> [[Employee]]
 groupByTenure emps = groupBy (===) (sortOn tenureYears emps)
-      where tenureYears emp = year currDate - year (joinedOn emp) -- Sort for better grouping
+      where tenureYears emp = yearDiff (joinedOn emp) currDate -- Sort for better grouping
 
 assignTenure :: [Employee] -> (Int, [Employee])
-assignTenure emps  = 
-      let getYear  = year (joinedOn (head emps))
-          yearDiff = (year currDate) - getYear
-      in  (yearDiff, emps)
+assignTenure emps  = (getYear, emps)
+    where getYear = yearDiff (joinedOn (head emps)) currDate
 
 calculateTenure :: Employee -> Int
 calculateTenure emp =
@@ -68,7 +66,6 @@ yearDiff :: Date -> Date -> Int
 yearDiff date1 date2 = year date2 - year date1
 
 
-
 -- 1.
 employeesWithOverlappingPermits :: [Employee] -> [(EId, EId)]
 employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
@@ -79,7 +76,7 @@ employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   Just permit2 <- [permit emp2],
   joinedOn emp1 <= expiryDate permit2 && expiryDate permit1 >= joinedOn emp2
   ]
-  
+
 
 -- 2.
 employeesByTenure :: [Employee] -> [(Int, [Employee])]
@@ -183,7 +180,6 @@ prettyEmployeeGroup groups = do
       putStrLn $ "\n---- Group " ++ show n ++ " (" ++ show (length emps) ++ " employees) ----"
       mapM_ (putStr . prettyEmployee) emps
 
--- Modified version of your existing prettyEmployee
 prettyEmployee :: Employee -> String
 prettyEmployee emp = unlines
   [ "  Employee ID: " ++ empId emp
