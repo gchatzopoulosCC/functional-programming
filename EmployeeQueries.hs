@@ -62,6 +62,16 @@ assignTenure emps  =
           yearDiff = (year currDate) - getYear
       in  (yearDiff, emps)
 
+calculateTenure :: Employee -> Int
+calculateTenure emp =
+  let endDate = case leftOn emp of
+                    Just date -> date
+                    Nothing   -> currDate
+  in yearDiff (joinedOn emp) endDate
+
+yearDiff :: Date -> Date -> Int
+yearDiff date1 date2 = year date2 - year date1
+
 
 
 -- 1
@@ -88,13 +98,8 @@ longestWorkingEmployee emps = Just (maximumBy (\emp1 emp2 -> compare (calculateT
 
 
 --4. confident
-withExpiredPermit :: [Employee] -> Maybe Date -> [EId]
-withExpiredPermit emps currDate = 
-      [empId emp | 
-      emp <- emps, 
-      Just p <- [permit emp], 
-      Just expiry <- [expiryDate p], 
-      Just curr <- [currDate], curr > expiry]
+withExpiredPermit :: [Employee] -> Date -> [EId]
+withExpiredPermit emps currDate = [empId emp | emp <- emps, Just p <- [permit emp], currDate > expiryDate p]
 
 
 --5. confident
