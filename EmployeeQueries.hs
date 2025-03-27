@@ -79,7 +79,7 @@ employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
   Just permit2 <- [permit emp2],
   joinedOn emp1 <= expiryDate permit2 && expiryDate permit1 >= joinedOn emp2
   ]
-
+  
 
 -- 2.
 employeesByTenure :: [Employee] -> [(Int, [Employee])]
