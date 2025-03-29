@@ -1,3 +1,5 @@
+import Data.List (sortBy)
+
 -- Types
 data CellValue = Number Double
                 | Formula (Spreadsheet -> Double)
@@ -55,6 +57,23 @@ sumRange :: Spreadsheet -> Position -> Position -> Double
 sumRange spreadsheet (x1, y1) (x2, y2) = 
     sum [cellValue | ((x, y), Number cellValue) <- spreadsheet, x >= x1, x <= x2, y >= y1, y <= y2]
 
+
+--7 mapRange that applies a numeric function to all cells in a given range.
+mapRange :: (Double -> Double) -> Spreadsheet -> Position -> Position -> Spreadsheet
+mapRange f spreadsheet (x1, y1) (x2, y2) =
+    map (\(pos, value) -> 
+        if inRange pos 
+        then (pos, applyFunction value) 
+        else (pos, value)) spreadsheet
+  where
+    inRange (x, y) = x >= x1 && x <= x2 && y >= y1 && y <= y2
+    applyFunction (Number n) = Number (f n)
+
+--8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
+
+sortCellsByValue :: Spreadsheet -> Spreadsheet
+sortCellsByValue spreadsheet = 
+    sortedCells = sortBy (\cell1 cell2 -> compare (getCellNumericValue cell1) (getCellNumericValue cell2)) spreadsheet
 
 
 
@@ -257,6 +276,11 @@ evaluateCell :: CellValue -> Spreadsheet -> Double
 evaluateCell (Number n) _ = n
 evaluateCell (Formula f) sheet = f sheet
 
+-- Helper function to get the numeric value of a cell
+getCellNumericValue :: (Position, CellValue) -> Double
+getCellNumericValue (, Number n) = n
+getCellNumericValue (, Formula f) = f spreadsheet 
+
 -- Test function for countCellsBy
 testCountCellsBy :: IO ()
 testCountCellsBy = do
@@ -297,6 +321,73 @@ testCountCellsBy = do
     
     isGreaterThan10 (Number n) = n > 10
     isGreaterThan10 _ = False
+
+    -- Test function for mapRange
+testMapRange :: IO ()
+testMapRange = do
+  putStrLn "Testing mapRange function:"
+  
+  putStrLn "Original spreadsheet:"
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) testSpreadsheet
+  
+  putStrLn "\nAfter doubling numeric values in range (0,0) to (1,1):"
+  let doubledSheet = mapRange (*2) testSpreadsheet (0, 0) (1, 1)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) doubledSheet
+  
+  putStrLn "\nAfter adding 10 to numeric values in range (0,0) to (2,2):"
+  let addedSheet = mapRange (+10) testSpreadsheet (0, 0) (2, 2)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) addedSheet
+  
+  putStrLn "\nAfter applying absolute value to numeric values in range (2,0) to (2,2):"
+  let absSheet = mapRange abs testSpreadsheet (2, 0) (2, 2)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) absSheet
+  
+  putStrLn "\nAfter squaring numeric values in range (0,1) to (0,2):"
+  let squaredSheet = mapRange (\x -> x * x) testSpreadsheet (0, 1) (0, 2)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) squaredSheet
+  
+  putStrLn "\nAfter applying function to empty range (3,3) to (4,4):"
+  let emptyRangeSheet = mapRange (*2) testSpreadsheet (3, 3) (4, 4)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) emptyRangeSheet
+  
+  putStrLn "\nAfter applying function to invalid range (2,2) to (0,0):"
+  let invalidRangeSheet = mapRange (*2) testSpreadsheet (2, 2) (0, 0)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) invalidRangeSheet
+  
+  -- Test with a different spreadsheet that has only numbers
+  putStrLn "\nTesting with numbersOnly spreadsheet:"
+  putStrLn "Original:"
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) numbersOnly
+  
+  putStrLn "\nAfter applying function to all cells (1,1) to (2,2):"
+  let allNumbersSheet = mapRange (/2) numbersOnly (1, 1) (2, 2)
+  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) allNumbersSheet
+
+  -- Test function for sortCellsByValue
+testSortCellsByValue :: IO ()
+testSortCellsByValue = do
+  putStrLn "Testing sortCellsByValue function:"
+  
+  putStrLn "Original spreadsheet:"
+  mapM_ printCell testSpreadsheet
+  
+  putStrLn "\nSorted spreadsheet by cell values:"
+  let sortedSheet = sortCellsByValue testSpreadsheet
+  mapM_ printCell sortedSheet
+  
+  putStrLn "\nTesting with numbersOnly spreadsheet:"
+  putStrLn "Original:"
+  mapM_ printCell numbersOnly
+  
+  putStrLn "\nSorted by value:"
+  let sortedNumbers = sortCellsByValue numbersOnly
+  mapM_ printCell sortedNumbers
+  where
+    printCell (pos, val) = do
+      let valueStr = case val of
+                        Number n -> show n
+                        Formula f -> "Formula: " ++ show (f testSpreadsheet)
+      putStrLn $ show pos ++ ": " ++ valueStr
 
 main :: IO ()
 main = do
