@@ -53,7 +53,7 @@ countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
 --6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)). (4 pts)
 sumRange :: Spreadsheet -> Position -> Position -> Double
 sumRange spreadsheet (x1, y1) (x2, y2) = 
-    sum [cellValue | ((x, y), Number cellValue) <- spreadsheet, x >= x1, x <= x2, y >= y1, y <= y2]
+    sum [evalCell spreadsheet (x, y) | ((x, y), Number cellValue) <- spreadsheet, x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))]
 
 
 
