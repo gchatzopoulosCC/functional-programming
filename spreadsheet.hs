@@ -1,5 +1,3 @@
-import Data.List (any)
-
 -- Types
 data CellValue = Number Double
                 | Formula (Spreadsheet -> Double)
@@ -11,27 +9,6 @@ instance Show CellValue where
 type Position = (Int, Int) -- (Row, Column)
 type Spreadsheet = [(Position, CellValue)]
 
--- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet. (2 pts)
-mapSpreadsheet :: (CellValue -> CellValue) -> Spreadsheet -> Spreadsheet
-mapSpreadsheet f spreadsheet =  map (\(position, value) -> (position, f value)) spreadsheet
-
--- 4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet. (4 pts)
-filterCellsByValue :: (CellValue -> Bool) -> Spreadsheet -> Spreadsheet
-filterCellsByValue f spreadsheet = filter (\(_, value) -> f value) spreadsheet
-
---5. countCellsBy that counts the cells that match a predicate. (2 pts)
-countCellsBy :: (CellValue -> Bool) -> Spreadsheet -> Int
-countCellsBy f []           = 0
-countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
-
---6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)). (4 pts)
-sumRange :: Spreadsheet -> Position -> Position -> Double
-sumRange spreadsheet (x1, y1) (x2, y2) = 
-    sum [cellValue | ((x, y), Number cellValue) <- spreadsheet, x >= x1, x <= x2, y >= y1, y <= y2]
-
-
-sumAllNumbers :: Spreadsheet -> Double
-sumAllNumbers sheet = sum [x | (_, Number x) <- sheet]
 
 -- Helpers
 cellValue :: Spreadsheet -> Position -> CellValue
@@ -49,13 +26,37 @@ evalCell sheet position =
 
 -- 2
 updateCell :: Spreadsheet -> Position -> CellValue -> Spreadsheet
-updateCell [] position value = [(position, value)]
+updateCell [] position value    = [(position, value)]
 updateCell sheet position value =
-    let (before, after) = break (\(pos, _) -> pos == position) sheet
+    let (before, after)         = break (\(pos, _) -> pos == position) sheet
     in case after of
         []            -> before ++ [(position, value)]
         ((_, _):rest) -> before ++ [(position, value)] ++ rest
         
+
+-- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet. (2 pts)
+mapSpreadsheet :: (CellValue -> CellValue) -> Spreadsheet -> Spreadsheet
+mapSpreadsheet f spreadsheet = map (\(position, value) -> (position, f value)) spreadsheet
+
+
+-- 4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet. (4 pts)
+filterCellsByValue :: (CellValue -> Bool) -> Spreadsheet -> Spreadsheet
+filterCellsByValue f spreadsheet = filter (\(_, value) -> f value) spreadsheet
+
+
+--5. countCellsBy that counts the cells that match a predicate. (2 pts)
+countCellsBy :: (CellValue -> Bool) -> Spreadsheet -> Int
+countCellsBy f []          = 0
+countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
+
+
+--6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)). (4 pts)
+sumRange :: Spreadsheet -> Position -> Position -> Double
+sumRange spreadsheet (x1, y1) (x2, y2) = 
+    sum [cellValue | ((x, y), Number cellValue) <- spreadsheet, x >= x1, x <= x2, y >= y1, y <= y2]
+
+
+
 
 --------------------------------------------------------------
 -- Testing
