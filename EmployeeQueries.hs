@@ -37,19 +37,8 @@ employeesWithOverlappingPermits emps = [(empId emp1, empId emp2) |
 
 --2. ehh
 employeesByTenure :: [Employee] -> [(Int, [Employee])]
-employeesByTenure emps = map formatGroup (groupByTenure (sortByTenure (assignTenure emps)))
-
-assignTenure :: [Employee] -> [(Int, Employee)]
-assignTenure emps = [(calculateTenure emp, emp) | emp <- emps]
-
-sortByTenure :: [(Int, Employee)] -> [(Int, Employee)]
-sortByTenure = sortOn fst
-
-groupByTenure :: [(Int, Employee)] -> [[(Int, Employee)]]
-groupByTenure = groupBy (\(t1, _) (t2, _) -> t1 == t2)
-
-formatGroup :: [(Int, Employee)] -> (Int, [Employee])
-formatGroup group = (fst (head group), map snd group)
+employeesByTenure emps = 
+  map (\x -> (fst (head x), map snd x)) (groupBy (\(t1, _) (t2, _) -> t1 == t2) (sortOn fst ([(calculateTenure emp, emp) | emp <- emps])))
 
 currDate :: Date
 currDate = Date 2025 3 22
