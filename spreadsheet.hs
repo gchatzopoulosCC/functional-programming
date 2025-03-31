@@ -1,4 +1,5 @@
 import Data.List (sortBy)
+import Data.Char (isLetter, ord, chr)
 
 -- Types
 data CellValue = Number Double
@@ -75,6 +76,33 @@ sortCellsByValue :: Spreadsheet -> Spreadsheet
 sortCellsByValue spreadsheet = 
     sortedCells = sortBy (\cell1 cell2 -> compare (getCellNumericValue cell1) (getCellNumericValue cell2)) spreadsheet
 
+-- 2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
+-- (1,27) and the reverse operation, i.e., given a position to return the string reference.
+
+stringToPosition :: String -> Position
+stringToPosition s = 
+  let (letters, numbers) = span isLetter s
+      x = read numbers :: Int
+      y = convertToBase26 letters
+  in (x,y)
+
+reverseStringToPosition :: Position -> String
+reverseStringToPosition (x,y) = 
+   convertFromBase26 y ++ show x
+
+-- Helper (Could also be done using foldl meaning no helper have to ask prof)
+
+convertToBase26 :: String -> Int
+convertToBase26 []     = 0
+convertToBase26 (c:cs) = (ord c - ord 'A' + 1) * (26 ^ length cs) + convertToBase26 cs
+
+convertFromBase26 :: Int -> String
+convertFromBase26 0 = ""
+convertFromBase26 n = 
+  let newN = n - 1
+      last = chr (ord 'A' + (newN `mod` 26))
+      rest = newN `div` 26
+  in convertFromBase26 rest ++ [last]
 
 
 --------------------------------------------------------------
