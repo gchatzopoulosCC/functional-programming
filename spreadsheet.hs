@@ -4,10 +4,12 @@ import Data.Char (isLetter, ord, chr)
 -- Types
 data CellValue = Number Double
                 | Formula (Spreadsheet -> Double)
+                | Reference String
 
 instance Show CellValue where
-    show (Number x) = show x
-    show (Formula _) = "Formula"
+    show (Number x)    = show x
+    show (Formula _)   = "Formula"
+    show (Reference r) = r
 
 type Position = (Int, Int) -- (Row, Column)
 type Spreadsheet = [(Position, CellValue)]
@@ -23,8 +25,9 @@ cellValue ((pos, value):tail) position = if pos == position then value else cell
 evalCell :: Spreadsheet -> Position -> Double
 evalCell sheet position =
     case cellValue sheet position of
-        Number x  -> x
-        Formula f -> f sheet
+        Number x    -> x
+        Formula f   -> f sheet
+        Reference r -> evalCell sheet (stringToPosition r)
 
 
 -- 2
@@ -56,7 +59,7 @@ countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
 --6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)). (4 pts)
 sumRange :: Spreadsheet -> Position -> Position -> Double
 sumRange spreadsheet (x1, y1) (x2, y2) = 
-    sum [evalCell spreadsheet (x, y) | ((x, y), Number cellValue) <- spreadsheet, x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))]
+    sum [evalCell spreadsheet (x, y) | ((x, y), _) <- spreadsheet, x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))]
 
 
 --7 mapRange that applies a numeric function to all cells in a given range.
@@ -67,14 +70,14 @@ mapRange f spreadsheet (x1, y1) (x2, y2) =
         then (pos, applyFunction value) 
         else (pos, value)) spreadsheet
   where
-    inRange (x, y) = x >= x1 && x <= x2 && y >= y1 && y <= y2
+    inRange (x, y) = x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     applyFunction (Number n) = Number (f n)
 
 --8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
 
 sortCellsByValue :: Spreadsheet -> Spreadsheet
 sortCellsByValue spreadsheet = 
-    sortedCells = sortBy (\cell1 cell2 -> compare (getCellNumericValue cell1) (getCellNumericValue cell2)) spreadsheet
+     sortBy (\(pos1, _) (pos2, _) -> compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2)) spreadsheet
 
 -- 2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
 -- (1,27) and the reverse operation, i.e., given a position to return the string reference.
@@ -303,11 +306,6 @@ testMapSpreadsheet = do
 evaluateCell :: CellValue -> Spreadsheet -> Double
 evaluateCell (Number n) _ = n
 evaluateCell (Formula f) sheet = f sheet
-
--- Helper function to get the numeric value of a cell
-getCellNumericValue :: (Position, CellValue) -> Double
-getCellNumericValue (, Number n) = n
-getCellNumericValue (, Formula f) = f spreadsheet 
 
 -- Test function for countCellsBy
 testCountCellsBy :: IO ()
