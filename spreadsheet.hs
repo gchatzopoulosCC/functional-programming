@@ -77,7 +77,7 @@ mapRange f spreadsheet (x1, y1) (x2, y2) =
 
 sortCellsByValue :: Spreadsheet -> Spreadsheet
 sortCellsByValue spreadsheet = 
-     sortBy (\(pos1, _) (pos2, _) -> compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2)) spreadsheet
+    sortBy (\(pos1, _) (pos2, _) -> compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2)) spreadsheet
 
 -- 2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
 -- (1,27) and the reverse operation, i.e., given a position to return the string reference.
@@ -386,7 +386,7 @@ testMapRange = do
   mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) numbersOnly
   
   putStrLn "\nAfter applying function to all cells (1,1) to (2,2):"
-  let allNumbersSheet = mapRange (/2) numbersOnly (1, 1) (2, 2)
+  let allNumbersSheet = mapRange (\x -> x / 2) numbersOnly (1, 1) (2, 2)
   mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) allNumbersSheet
 
   -- Test function for sortCellsByValue
@@ -420,3 +420,7 @@ main = do
   testMapSpreadsheet
   putStrLn "\n------------------------\n"
   testFilterCellsByValue
+  putStrLn "\n------------------------\n"
+  testMapRange
+  putStrLn "\n------------------------\n"
+  testSortCellsByValue
