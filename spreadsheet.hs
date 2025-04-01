@@ -118,210 +118,157 @@ convertFromBase26 n =
       rest = newN `div` 26
   in convertFromBase26 rest ++ [last]
 
-
---------------------------------------------------------------
--- Testing
---------------------------------------------------------------
-
--- 1. Simple spreadsheet with numbers only
-numbersOnly :: Spreadsheet
-numbersOnly = 
-    [ ((1, 1), Number 10.0)
-    , ((1, 2), Number 20.0)
-    , ((2, 1), Number 30.0)
-    , ((2, 2), Number 40.0)
-    ]
-
--- 2. Spreadsheet with formulas
--- Formulas that sum all numeric values in the spreadsheet
-sumAllNumbers :: Spreadsheet -> Double
-sumAllNumbers sheet = sum [x | (_, Number x) <- sheet]
-
--- Formula that counts all cells
-countAllCells :: Spreadsheet -> Double
-countAllCells sheet = fromIntegral (length sheet)
-
-formulaSheet :: Spreadsheet
-formulaSheet =
-    [ ((1, 1), Number 5.0)
-    , ((1, 2), Number 10.0)
-    , ((2, 1), Formula sumAllNumbers)
-    , ((2, 2), Formula countAllCells)
-    ]
-
--- 3. Mixed spreadsheet with numbers and formulas
--- Formula to calculate average
-average :: Spreadsheet -> Double
-average sheet = 
-    let nums = [x | (_, Number x) <- sheet]
-    in if null nums then 0 else sum nums / fromIntegral (length nums)
-
-mixedSheet :: Spreadsheet
-mixedSheet =
-    [ ((1, 1), Number 12.5)
-    , ((1, 2), Number 7.3)
-    , ((1, 3), Number 9.1)
-    , ((2, 1), Formula sumAllNumbers)
-    , ((2, 2), Formula average)
-    , ((2, 3), Number 42.0)
-    ]
-
--- 4. Empty spreadsheet
-emptySheet :: Spreadsheet
-emptySheet = []
-
--- 5. Sparse spreadsheet (non-contiguous positions)
-sparseSheet :: Spreadsheet
-sparseSheet =
-    [ ((100, 100), Number 1.0)
-    , ((200, 200), Number 2.0)
-    , ((300, 300), Formula sumAllNumbers)
-    ]
-
--- 6. Formula that references specific cells
--- Helper function to get a cell value as Double
-getCellValue :: Spreadsheet -> Position -> Double
-getCellValue sheet pos =
-    case lookup pos sheet of
-        Just (Number x) -> x
-        _ -> 0.0  -- default value if not found or is a formula
-
--- Formula that sums two specific cells
-sumTwoCells :: Position -> Position -> Spreadsheet -> Double
-sumTwoCells pos1 pos2 sheet = getCellValue sheet pos1 + getCellValue sheet pos2
-
-cellReferenceSheet :: Spreadsheet
-cellReferenceSheet =
-    [ ((1, 1), Number 15.0)
-    , ((1, 2), Number 25.0)
-    , ((2, 1), Formula (sumTwoCells (1, 1) (1, 2)))
-    , ((2, 2), Number 40.0)
-    ]
-
--- Test function for sumRange
-testSumRange :: IO ()
-testSumRange = do
-  putStrLn "Testing sumRange function:"
+-- Main test function
+main :: IO ()
+main = do
+  putStrLn "=== Spreadsheet Function Test Suite ==="
+  putStrLn "\n1. Basic Spreadsheet Functions"
+  testEvalCell
+  testUpdateCell
+  testUpdateCellWithReference
   
-  -- Test case 1: Sum all numeric cells in the spreadsheet
-  let totalSum = sumRange testSpreadsheet (0, 0) (2, 2)
-  putStrLn $ "Sum of all numeric cells (0,0) to (2,2): " ++ show totalSum
+  putStrLn "\n2. Utility Functions"
+  testStringToPosition
+  testPositionToString
   
-  -- Test case 2: Sum cells in top row
-  let topRowSum = sumRange testSpreadsheet (0, 0) (0, 2)
-  putStrLn $ "Sum of top row (0,0) to (0,2): " ++ show topRowSum
+  putStrLn "\n3. Higher-Order Functions"
+  testMapSpreadsheet
+  testFilterCellsByValue
+  testCountCellsBy
   
-  -- Test case 3: Sum cells in first column
-  let firstColSum = sumRange testSpreadsheet (0, 0) (2, 0)
-  putStrLn $ "Sum of first column (0,0) to (2,0): " ++ show firstColSum
-  
-  -- Test case 4: Sum cells in 2x2 top-left corner
-  let cornerSum = sumRange testSpreadsheet (0, 0) (1, 1) 
-  putStrLn $ "Sum of 2x2 top-left corner (0,0) to (1,1): " ++ show cornerSum
-  
-  -- Test case 5: Single cell
-  let singleCell = sumRange testSpreadsheet (2, 2) (2, 2)
-  putStrLn $ "Sum of single cell (2,2): " ++ show singleCell
-  
-  -- Test case 6: Empty range (coordinates reversed)
-  let emptyRange = sumRange testSpreadsheet (2, 2) (0, 0)
-  putStrLn $ "Sum of empty range (2,2) to (0,0): " ++ show emptyRange
-  
-  -- Test case 7: Range with negative numbers
-  let negativeRange = sumRange testSpreadsheet (2, 1) (2, 2)
-  putStrLn $ "Sum of range with negative number (2,1) to (2,2): " ++ show negativeRange
+  putStrLn "\n4. Range Operations"
+  testSumRange
+  testSumRangeWithReference
+  testMapRange
+  testMapRangeWithReference
 
--- Test spreadsheet with various cell values
+  putStrLn "\n5. Sorting Function"
+  testSortCellsByValue
+
+
+-- Create test spreadsheet
 testSpreadsheet :: Spreadsheet
 testSpreadsheet = 
-  [ ((0, 0), Number 10.0)
-  , ((0, 1), Number 20.0)
-  , ((0, 2), Number 30.0)
-  , ((1, 0), Number 5.0)
-  , ((1, 1), Formula sumAllNumbers)
-  , ((1, 2), Formula (\s -> 
-      let Number val1 = lookupCell (0, 1) s
-          Number val2 = lookupCell (1, 0) s
-      in val1 + val2))
-  , ((2, 0), Number 7.5)
-  , ((2, 1), Number 0.0)
-  , ((2, 2), Number (-3.5))
+  [ ((1, 1), Number 10.0)                             -- A1: 10.0
+  , ((1, 2), Number 20.0)                             -- B1: 20.0
+  , ((1, 3), Number 30.0)                             -- C1: 30.0
+  , ((2, 1), Number 5.0)                              -- A2: 5.0
+  , ((2, 2), Formula (\s -> 2 * evalCell s (1, 1)))   -- B2: =2*A1 (formula that doubles A1)
+  , ((2, 3), Formula (\s -> evalCell s (1, 2) + evalCell s (2, 1))) -- C2: =B1+A2 (formula that adds B1 and A2)
+  , ((3, 1), Number 7.5)                              -- A3: 7.5
+  , ((3, 2), Number 0.0)                              -- B3: 0.0
+  , ((3, 3), Number (-3.5))                           -- C3: -3.5
+  , ((4, 1), Reference "A1")                          -- A4: Reference to A1
+  , ((4, 2), Formula (\s -> evalCell s (4, 1) * 2))   -- B4: Formula that doubles A4's value
   ]
 
-  -- Helper function to lookup a cell value
-lookupCell :: Position -> Spreadsheet -> CellValue
-lookupCell pos sheet = 
-  case lookup pos sheet of
-    Just val -> val
-    Nothing  -> Number 0.0  -- Default value for empty cells
+-- 1. Test evalCell
+testEvalCell :: IO ()
+testEvalCell = do
+  putStrLn "Testing evalCell:"
+  putStrLn $ "A1 (Number): " ++ show (evalCell testSpreadsheet (1, 1))  -- Should be 10.0
+  putStrLn $ "B2 (Formula): " ++ show (evalCell testSpreadsheet (2, 2)) -- Should be 20.0
+  putStrLn $ "C2 (Formula): " ++ show (evalCell testSpreadsheet (2, 3)) -- Should be 25.0
+  putStrLn $ "A4 (Reference): " ++ show (evalCell testSpreadsheet (4, 1)) -- Should be 10.0
+  putStrLn $ "B4 (Formula with Reference): " ++ show (evalCell testSpreadsheet (4, 2)) -- Should be 20.0
 
-
-testFilterCellsByValue :: IO ()
-testFilterCellsByValue = do
-  putStrLn "Original spreadsheet:"
-  mapM_ print testSpreadsheet
+-- 2. Test updateCell
+testUpdateCell :: IO ()
+testUpdateCell = do
+  putStrLn "Testing updateCell:"
+  let updatedSheet = updateCell testSpreadsheet (1, 1) (Number 15.0)
+  putStrLn $ "A1 after update to 15.0: " ++ show (evalCell updatedSheet (1, 1))
+  putStrLn $ "B2 after A1 update (formula should recalculate): " ++ show (evalCell updatedSheet (2, 2))
   
-  putStrLn "\nOnly cells with values > 5:"
-  let filteredSheet = filterCellsByValue isGreaterThanFive testSpreadsheet
-  mapM_ print filteredSheet
-  where
-    isGreaterThanFive (Number n) = n > 5
-    isGreaterThanFive _ = False  -- Exclude formulas
+  -- Test adding a new cell
+  let expandedSheet = updateCell testSpreadsheet (5, 5) (Number 100.0)
+  putStrLn $ "E5 after adding new cell: " ++ show (evalCell expandedSheet (5, 5))
 
--- Test function for mapSpreadsheet
+-- 3. Test updateCellWithReference
+testUpdateCellWithReference :: IO ()
+testUpdateCellWithReference = do
+  putStrLn "Testing updateCellWithReference:"
+  let updatedSheet = updateCellWithReference testSpreadsheet "D4" (Number 42.0)
+  putStrLn $ "D4 after update with reference: " ++ show (evalCell updatedSheet (4, 4))
+
+-- 4. Test stringToPosition and positionToString
+testStringToPosition :: IO ()
+testStringToPosition = do
+  putStrLn "Testing stringToPosition:"
+  putStrLn $ "A1 -> " ++ show (stringToPosition "A1")  -- Should be (1,1)
+  putStrLn $ "B2 -> " ++ show (stringToPosition "B2")  -- Should be (2,2)
+  putStrLn $ "Z10 -> " ++ show (stringToPosition "Z10")  -- Should be (10,26)
+  putStrLn $ "AA1 -> " ++ show (stringToPosition "AA1")  -- Should be (1,27)
+  putStrLn $ "ZZ99 -> " ++ show (stringToPosition "ZZ99")  -- Should be (99,702)
+
+testPositionToString :: IO ()
+testPositionToString = do
+  putStrLn "Testing positionToString:"
+  putStrLn $ "(1,1) -> " ++ positionToString (1,1)  -- Should be "A1"
+  putStrLn $ "(2,2) -> " ++ positionToString (2,2)  -- Should be "B2"
+  putStrLn $ "(10,26) -> " ++ positionToString (10,26)  -- Should be "Z10"
+  putStrLn $ "(1,27) -> " ++ positionToString (1,27)  -- Should be "AA1"
+  putStrLn $ "(99,702) -> " ++ positionToString (99,702)  -- Should be "ZZ99"
+
+  -- Test roundtrip: string -> position -> string
+  let testRoundtrip str = str ++ " -> " ++ (positionToString $ stringToPosition str)
+  putStrLn "Testing roundtrip conversions:"
+  mapM_ (putStrLn . testRoundtrip) ["A1", "B2", "Z10", "AA1", "ZZ99"]
+
+-- 5. Test mapSpreadsheet
 testMapSpreadsheet :: IO ()
 testMapSpreadsheet = do
-  putStrLn "Testing mapSpreadsheet function:"
+  putStrLn "Testing mapSpreadsheet:"
   
-  putStrLn "Original spreadsheet:"
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) testSpreadsheet
-  
-  putStrLn "\nAfter doubling all numeric values:"
+  -- Double all numeric values
   let doubledSheet = mapSpreadsheet doubleValue testSpreadsheet
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) doubledSheet
+  putStrLn "After doubling numeric values:"
+  putStrLn $ "A1: " ++ show (evalCell doubledSheet (1, 1))  -- Should be 20.0
+  putStrLn $ "B2 (formula - should still calculate based on doubled A1): " ++ show (evalCell doubledSheet (2, 2))  -- Should be 40.0
   
-  putStrLn "\nAfter applying absolute value to numeric cells:"
+  -- Apply absolute value to all numeric values
   let absSheet = mapSpreadsheet absValue testSpreadsheet
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) absSheet
+  putStrLn "After applying absolute value:"
+  putStrLn $ "C3 (negative number): " ++ show (evalCell absSheet (3, 3))  -- Should be 3.5
   
-  putStrLn "\nAfter replacing everything with zero (affects both numbers and formulas):"
-  let zeroSheet = mapSpreadsheet (\_ -> Number 0.0) testSpreadsheet
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) zeroSheet
-  
-  putStrLn "\nAfter wrapping formulas (demonstrates formula transformation):"
-  let wrappedSheet = mapSpreadsheet wrapFormula testSpreadsheet
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) wrappedSheet
-  
-  -- Evaluate some cells to verify formula transformation worked
-  putStrLn "\nEvaluating a formula cell before and after transformation:"
-  let formulaPos = (1, 2)
-      originalCell = lookupCell formulaPos testSpreadsheet
-      transformedCell = lookupCell formulaPos wrappedSheet
-  putStrLn $ "Original formula at " ++ show formulaPos ++ " evaluates to: " 
-             ++ show (evaluateCell originalCell testSpreadsheet)
-  putStrLn $ "Wrapped formula at " ++ show formulaPos ++ " evaluates to: " 
-             ++ show (evaluateCell transformedCell testSpreadsheet)
   where
-    -- Transformation functions
     doubleValue (Number n) = Number (n * 2)
-    doubleValue formula = formula  -- Keep formulas unchanged
+    doubleValue x = x  -- Keep formulas unchanged
     
     absValue (Number n) = Number (abs n)
-    absValue formula = formula  -- Keep formulas unchanged
-    
-    -- Function that wraps formulas with additional calculation
-    wrapFormula (Formula f) = Formula (\s -> let result = f s in result * 2)
-    wrapFormula other = other  -- Keep numeric cells unchanged
-    
--- Helper to evaluate a cell
-evaluateCell :: CellValue -> Spreadsheet -> Double
-evaluateCell (Number n) _ = n
-evaluateCell (Formula f) sheet = f sheet
+    absValue x = x  -- Keep formulas unchanged
 
--- Test function for countCellsBy
+-- 6. Test filterCellsByValue
+testFilterCellsByValue :: IO ()
+testFilterCellsByValue = do
+  putStrLn "Testing filterCellsByValue:"
+  
+  -- Filter only numeric cells
+  let numericCells = filterCellsByValue isNumeric testSpreadsheet
+  putStrLn $ "Number of numeric cells: " ++ show (length numericCells)
+  
+  -- Filter only positive numbers
+  let positiveCells = filterCellsByValue isPositive testSpreadsheet
+  putStrLn $ "Number of positive numeric cells: " ++ show (length positiveCells)
+  
+  -- Filter only formula cells
+  let formulaCells = filterCellsByValue isFormula testSpreadsheet
+  putStrLn $ "Number of formula cells: " ++ show (length formulaCells)
+  
+  where
+    isNumeric (Number _) = True
+    isNumeric _ = False
+    
+    isPositive (Number n) = n > 0
+    isPositive _ = False
+    
+    isFormula (Formula _) = True
+    isFormula _ = False
+
+-- 7. Test countCellsBy
 testCountCellsBy :: IO ()
 testCountCellsBy = do
-  putStrLn "Testing countCellsBy function:"
+  putStrLn "Testing countCellsBy:"
   
   let numericCount = countCellsBy isNumber testSpreadsheet
   putStrLn $ "Count of numeric cells: " ++ show numericCount
@@ -329,17 +276,15 @@ testCountCellsBy = do
   let formulaCount = countCellsBy isFormula testSpreadsheet
   putStrLn $ "Count of formula cells: " ++ show formulaCount
   
+  let referenceCount = countCellsBy isReference testSpreadsheet
+  putStrLn $ "Count of reference cells: " ++ show referenceCount
+  
   let positiveCount = countCellsBy isPositive testSpreadsheet
   putStrLn $ "Count of positive number cells: " ++ show positiveCount
   
   let negativeCount = countCellsBy isNegative testSpreadsheet
   putStrLn $ "Count of negative number cells: " ++ show negativeCount
   
-  let zeroCount = countCellsBy isZero testSpreadsheet
-  putStrLn $ "Count of cells with value exactly 0: " ++ show zeroCount
-  
-  let greaterThan10Count = countCellsBy isGreaterThan10 testSpreadsheet
-  putStrLn $ "Count of cells with value > 10: " ++ show greaterThan10Count
   where
     isNumber (Number _) = True
     isNumber _ = False
@@ -347,91 +292,87 @@ testCountCellsBy = do
     isFormula (Formula _) = True
     isFormula _ = False
     
+    isReference (Reference _) = True
+    isReference _ = False
+    
     isPositive (Number n) = n > 0
     isPositive _ = False
     
     isNegative (Number n) = n < 0
     isNegative _ = False
-    
-    isZero (Number n) = n == 0
-    isZero _ = False
-    
-    isGreaterThan10 (Number n) = n > 10
-    isGreaterThan10 _ = False
 
-    -- Test function for mapRange
+-- 8. Test sumRange
+testSumRange :: IO ()
+testSumRange = do
+  putStrLn "Testing sumRange:"
+  
+  -- Sum of all cells
+  let totalSum = sumRange testSpreadsheet (1, 1) (3, 3)
+  putStrLn $ "Sum of all numeric cells (1,1) to (3,3): " ++ show totalSum
+  
+  -- Sum of first row
+  let row1Sum = sumRange testSpreadsheet (1, 1) (1, 3)
+  putStrLn $ "Sum of first row (1,1) to (1,3): " ++ show row1Sum
+  
+  -- Sum of first column
+  let col1Sum = sumRange testSpreadsheet (1, 1) (3, 1)
+  putStrLn $ "Sum of first column (1,1) to (3,1): " ++ show col1Sum
+  
+  -- Sum of 2x2 area
+  let areaSum = sumRange testSpreadsheet (1, 1) (2, 2)
+  putStrLn $ "Sum of 2x2 area (1,1) to (2,2): " ++ show areaSum
+
+-- 9. Test sumRangeWithReference
+testSumRangeWithReference :: IO ()
+testSumRangeWithReference = do
+  putStrLn "Testing sumRangeWithReference:"
+  
+  let sum1 = sumRangeWithReference testSpreadsheet "A1" "C3"
+  putStrLn $ "Sum of A1:C3: " ++ show sum1
+  
+  let sum2 = sumRangeWithReference testSpreadsheet "A1" "A3"
+  putStrLn $ "Sum of A1:A3: " ++ show sum2
+
+-- 10. Test mapRange
 testMapRange :: IO ()
 testMapRange = do
-  putStrLn "Testing mapRange function:"
+  putStrLn "Testing mapRange:"
   
-  putStrLn "Original spreadsheet:"
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) testSpreadsheet
+  -- Double all values in first row
+  let doubledRow1 = mapRange (*2) testSpreadsheet (1, 1) (1, 3)
+  putStrLn "After doubling first row:"
+  putStrLn $ "A1: " ++ show (evalCell doubledRow1 (1, 1))  -- Should be 20.0
+  putStrLn $ "B1: " ++ show (evalCell doubledRow1 (1, 2))  -- Should be 40.0
+  putStrLn $ "C1: " ++ show (evalCell doubledRow1 (1, 3))  -- Should be 60.0
+  putStrLn $ "A2 (outside range): " ++ show (evalCell doubledRow1 (2, 1))  -- Should remain 5.0
   
-  putStrLn "\nAfter doubling numeric values in range (0,0) to (1,1):"
-  let doubledSheet = mapRange (*2) testSpreadsheet (0, 0) (1, 1)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) doubledSheet
-  
-  putStrLn "\nAfter adding 10 to numeric values in range (0,0) to (2,2):"
-  let addedSheet = mapRange (+10) testSpreadsheet (0, 0) (2, 2)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) addedSheet
-  
-  putStrLn "\nAfter applying absolute value to numeric values in range (2,0) to (2,2):"
-  let absSheet = mapRange abs testSpreadsheet (2, 0) (2, 2)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) absSheet
-  
-  putStrLn "\nAfter squaring numeric values in range (0,1) to (0,2):"
-  let squaredSheet = mapRange (\x -> x * x) testSpreadsheet (0, 1) (0, 2)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) squaredSheet
-  
-  putStrLn "\nAfter applying function to empty range (3,3) to (4,4):"
-  let emptyRangeSheet = mapRange (*2) testSpreadsheet (3, 3) (4, 4)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) emptyRangeSheet
-  
-  putStrLn "\nAfter applying function to invalid range (2,2) to (0,0):"
-  let invalidRangeSheet = mapRange (*2) testSpreadsheet (2, 2) (0, 0)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) invalidRangeSheet
-  
-  -- Test with a different spreadsheet that has only numbers
-  putStrLn "\nTesting with numbersOnly spreadsheet:"
-  putStrLn "Original:"
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) numbersOnly
-  
-  putStrLn "\nAfter applying function to all cells (1,1) to (2,2):"
-  let allNumbersSheet = mapRange (\x -> x / 2) numbersOnly (1, 1) (2, 2)
-  mapM_ (\(pos, val) -> putStrLn $ show pos ++ ": " ++ show val) allNumbersSheet
+  -- Make all values in range negative
+  let negativeValues = mapRange negate testSpreadsheet (2, 1) (3, 2)
+  putStrLn "After negating values in range (2,1) to (3,2):"
+  putStrLn $ "A2: " ++ show (evalCell negativeValues (2, 1))  -- Should be -5.0
+  putStrLn $ "B3: " ++ show (evalCell negativeValues (3, 2))  -- Should be -0.0
+  putStrLn $ "A1 (outside range): " ++ show (evalCell negativeValues (1, 1))  -- Should remain 10.0
 
-  -- Test function for sortCellsByValue
+-- 11. Test mapRangeWithReference
+testMapRangeWithReference :: IO ()
+testMapRangeWithReference = do
+  putStrLn "Testing mapRangeWithReference:"
+  
+  let doubledFirstRow = mapRangeWithReference (*2) testSpreadsheet "A1" "C1"
+  putStrLn "After doubling A1:C1 range:"
+  putStrLn $ "A1: " ++ show (evalCell doubledFirstRow (1, 1))
+  putStrLn $ "B1: " ++ show (evalCell doubledFirstRow (1, 2))
+  putStrLn $ "C1: " ++ show (evalCell doubledFirstRow (1, 3))
+
+-- 12. Test sortCellsByValue
 testSortCellsByValue :: IO ()
 testSortCellsByValue = do
-  putStrLn "Testing sortCellsByValue function:"
+  putStrLn "Testing sortCellsByValue:"
   
-  putStrLn "Original spreadsheet:"
-  mapM_ printCell testSpreadsheet
-  
-  putStrLn "\nSorted spreadsheet by cell values:"
   let sortedSheet = sortCellsByValue testSpreadsheet
-  mapM_ printCell sortedSheet
-  
-  putStrLn "\nTesting with numbersOnly spreadsheet:"
-  putStrLn "Original:"
-  mapM_ printCell numbersOnly
-  
-  putStrLn "\nSorted by value:"
-  let sortedNumbers = sortCellsByValue numbersOnly
-  mapM_ printCell sortedNumbers
-  where
-    printCell (pos, val) = do
-      let valueStr = case val of
-                        Number n -> show n
-                        Formula f -> "Formula: " ++ show (f testSpreadsheet)
-      putStrLn $ show pos ++ ": " ++ valueStr
-
-main :: IO ()
-main = do
-  testMapSpreadsheet
-  putStrLn "\n------------------------\n"
-  testFilterCellsByValue
-  putStrLn "\n------------------------\n"
-  testMapRange
-  putStrLn "\n------------------------\n"
-  testSortCellsByValue
+  putStrLn "Cells sorted by value (lowest to highest):"
+  mapM_ (\(pos, _) -> do
+    let val = evalCell testSpreadsheet pos
+    let ref = positionToString pos
+    putStrLn $ ref ++ ": " ++ show val
+    ) sortedSheet
