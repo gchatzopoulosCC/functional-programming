@@ -39,6 +39,9 @@ updateCell sheet position value =
         []            -> before ++ [(position, value)]
         ((_, _):rest) -> before ++ [(position, value)] ++ rest
         
+updateCellWithReference :: Spreadsheet -> String -> CellValue -> Spreadsheet
+updateCellWithReference sheet reference value = 
+  updateCell sheet (stringToPosition reference) value
 
 -- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet. (2 pts)
 mapSpreadsheet :: (CellValue -> CellValue) -> Spreadsheet -> Spreadsheet
@@ -61,6 +64,10 @@ sumRange :: Spreadsheet -> Position -> Position -> Double
 sumRange spreadsheet (x1, y1) (x2, y2) = 
     sum [evalCell spreadsheet (x, y) | ((x, y), _) <- spreadsheet, x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))]
 
+sumRangeWithReference :: Spreadsheet -> String -> String -> Double
+sumRangeWithReference spreadsheet start end = 
+  sumRange spreadsheet (stringToPosition start) (stringToPosition end)
+
 
 --7 mapRange that applies a numeric function to all cells in a given range.
 mapRange :: (Double -> Double) -> Spreadsheet -> Position -> Position -> Spreadsheet
@@ -72,6 +79,10 @@ mapRange f spreadsheet (x1, y1) (x2, y2) =
   where
     inRange (x, y) = x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     applyFunction (Number n) = Number (f n)
+
+mapRangeWithReference :: (Double -> Double) -> Spreadsheet -> String -> String -> Spreadsheet
+mapRangeWithReference f spreadsheet start end =
+  mapRange f spreadsheet (stringToPosition start) (stringToPosition end)
 
 --8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
 
@@ -89,8 +100,8 @@ stringToPosition s =
       y = convertToBase26 letters
   in (x,y)
 
-reverseStringToPosition :: Position -> String
-reverseStringToPosition (x,y) = 
+positionToString :: Position -> String
+positionToString (x,y) = 
    convertFromBase26 y ++ show x
 
 -- Helper (Could also be done using foldl meaning no helper have to ask prof)
