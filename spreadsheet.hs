@@ -118,6 +118,39 @@ convertFromBase26 n =
       rest = newN `div` 26
   in convertFromBase26 rest ++ [last]
 
+--4. Implement a function that checks whether a spreadsheet has cyclic references and another that
+--   returns the sequences of positions that form cycles (if any). A cyclic reference is a chain of references
+--   that returns to itself, e.g., cell A1 references B1, B1 references C1, and C1 references A1.
+
+hasCyclicReferences :: Spreadsheet -> Bool
+hasCyclicReferences sheet = not $ null $ findCyclicReferences sheet
+
+findCyclicReferences :: Spreadsheet -> [[Position]]
+findCyclicReferences sheet = 
+    let positions = map fst sheet
+        cycles = [findCycleFrom sheet pos [] | pos <- positions]
+    in filter (not . null) cycles
+
+-- Helper function to find a cycle starting from a specific position
+findCycleFrom :: Spreadsheet -> Position -> [Position] -> [Position]
+findCycleFrom sheet pos visited
+    | pos `elem` visited = dropWhile (/= pos) (visited ++ [pos]) 
+    | otherwise = 
+        case lookup pos sheet of
+            Nothing -> []  
+            Just cellValue -> 
+                case getReferencedPosition sheet cellValue of
+                    Nothing -> []  
+                    Just nextPos -> findCycleFrom sheet nextPos (pos:visited)
+
+-- Helper to extract the position referenced by a cell (if any)
+getReferencedPosition :: Spreadsheet -> CellValue -> Maybe Position
+getReferencedPosition sheet (Reference ref) = Just $ stringToPosition ref
+getReferencedPosition sheet (Formula f) = Nothing  
+getReferencedPosition _ _ = Nothing
+
+
+
 -- Main test function
 main :: IO ()
 main = do
@@ -145,6 +178,9 @@ main = do
   putStrLn "\n5. Sorting Function"
   testSortCellsByValue
 
+  putStrLn "=== Spreadsheet Function Test Suite ==="
+  putStrLn "\n6. Cyclic Reference Detection"
+  testCyclicReferences
 
 -- Create test spreadsheet
 testSpreadsheet :: Spreadsheet
@@ -161,6 +197,7 @@ testSpreadsheet =
   , ((4, 1), Reference "A1")                          -- A4: Reference to A1
   , ((4, 2), Formula (\s -> evalCell s (4, 1) * 2))   -- B4: Formula that doubles A4's value
   ]
+
 
 -- 1. Test evalCell
 testEvalCell :: IO ()
@@ -376,3 +413,40 @@ testSortCellsByValue = do
     let ref = positionToString pos
     putStrLn $ ref ++ ": " ++ show val
     ) sortedSheet
+
+-- 13. Test CyclicReferences
+testCyclicReferences :: IO ()
+testCyclicReferences = do
+  putStrLn "Testing cyclic reference detection:"
+
+-- Create a spreadsheet with a cycle: A1 -> B1 -> C1 -> A1
+  let cyclicSheet = 
+        [ ((1, 1), Reference "C1")  -- A1 references C1
+        , ((1, 2), Reference "A1")  -- B1 references A1
+        , ((1, 3), Reference "B1")  -- C1 references B1
+        , ((2, 1), Number 5.0)      -- A2: simple value, no cycle
+        , ((2, 2), Reference "A2")  -- B2 references A2, no cycle
+        ]
+  
+  putStrLn $ "Has cycles: " ++ show (hasCyclicReferences cyclicSheet)
+  
+  putStrLn "Cycles found:"
+  let cycles = findCyclicReferences cyclicSheet
+  if null cycles
+    then putStrLn "  No cycles found"
+    else mapM_ (\cycle -> putStrLn $ "  " ++ showCycle cycle) cycles
+  
+  -- Test a non-cyclic spreadsheet
+  let noCycleSheet = 
+        [ ((1, 1), Number 10.0)
+        , ((1, 2), Reference "A1")
+        , ((1, 3), Reference "B1")
+        ]
+  
+  putStrLn $ "\nTesting non-cyclic spreadsheet:"
+  putStrLn $ "Has cycles: " ++ show (hasCyclicReferences noCycleSheet)
+  
+  where
+    showCycle cycle = 
+      concatMap (\pos -> positionToString pos ++ " → ") (init cycle) ++
+      positionToString (last cycle)
