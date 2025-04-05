@@ -83,7 +83,7 @@ mapRange f spreadsheet (x1, y1) (x2, y2) =
         && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     applyFunction (Number n) = Number (f n)
 
---8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
+-- 8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
 sortCellsByValue :: Spreadsheet -> Spreadsheet
 sortCellsByValue spreadsheet =
   sortBy
@@ -116,7 +116,7 @@ convertFromBase26 n =
       rest = newN `div` 26
    in convertFromBase26 rest ++ [last]
 
---4. Implement a function that checks whether a spreadsheet has cyclic references and another that
+-- 4. Implement a function that checks whether a spreadsheet has cyclic references and another that
 --   returns the sequences of positions that form cycles (if any). A cyclic reference is a chain of references
 --   that returns to itself, e.g., cell A1 references B1, B1 references C1, and C1 references A1.
 hasCyclicReferences :: Spreadsheet -> Bool
