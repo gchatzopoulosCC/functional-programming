@@ -1,452 +1,319 @@
+import Data.Char (chr, isLetter, ord)
 import Data.List (sortBy)
-import Data.Char (isLetter, ord, chr)
 
 -- Types
-data CellValue = Number Double
-                | Formula (Spreadsheet -> Double)
-                | Reference String
+data CellValue
+  = Number Double
+  | Formula (Spreadsheet -> Double)
+  | Reference String
 
 instance Show CellValue where
-    show (Number x)    = show x
-    show (Formula _)   = "Formula"
-    show (Reference r) = r
+  show (Number x) = show x
+  show (Formula _) = "Formula"
+  show (Reference r) = r
 
 type Position = (Int, Int) -- (Row, Column)
-type Spreadsheet = [(Position, CellValue)]
 
+type Spreadsheet = [(Position, CellValue)]
 
 -- Helpers
 cellValue :: Spreadsheet -> Position -> CellValue
-cellValue [] _                         = error "The position doesn't exist in the spreadsheet"
-cellValue ((pos, value):tail) position = if pos == position then value else cellValue tail position
-
+cellValue [] _ = error "The position doesn't exist in the spreadsheet"
+cellValue ((pos, value):tail) position =
+  if pos == position
+    then value
+    else cellValue tail position
 
 -- 1
 evalCell :: Spreadsheet -> Position -> Double
 evalCell sheet position =
-    case cellValue sheet position of
-        Number x    -> x
-        Formula f   -> f sheet
-        Reference r -> evalCell sheet (stringToPosition r)
-
+  case cellValue sheet position of
+    Number x -> x
+    Formula f -> f sheet
+    Reference r -> evalCell sheet (stringToPosition r)
 
 -- 2
 updateCell :: Spreadsheet -> Position -> CellValue -> Spreadsheet
-updateCell [] position value    = [(position, value)]
+updateCell [] position value = [(position, value)]
 updateCell sheet position value =
-    let (before, after)         = break (\(pos, _) -> pos == position) sheet
-    in case after of
-        []            -> before ++ [(position, value)]
+  let (before, after) = break (\(pos, _) -> pos == position) sheet
+   in case after of
+        [] -> before ++ [(position, value)]
         ((_, _):rest) -> before ++ [(position, value)] ++ rest
-        
-updateCellWithReference :: Spreadsheet -> String -> CellValue -> Spreadsheet
-updateCellWithReference sheet reference value = 
-  updateCell sheet (stringToPosition reference) value
 
--- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet. (2 pts)
+-- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet.
 mapSpreadsheet :: (CellValue -> CellValue) -> Spreadsheet -> Spreadsheet
-mapSpreadsheet f spreadsheet = map (\(position, value) -> (position, f value)) spreadsheet
+mapSpreadsheet f spreadsheet =
+  map (\(position, value) -> (position, f value)) spreadsheet
 
-
--- 4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet. (4 pts)
+-- 4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet.
 filterCellsByValue :: (CellValue -> Bool) -> Spreadsheet -> Spreadsheet
 filterCellsByValue f spreadsheet = filter (\(_, value) -> f value) spreadsheet
 
-
---5. countCellsBy that counts the cells that match a predicate. (2 pts)
+--5. countCellsBy that counts the cells that match a predicate.
 countCellsBy :: (CellValue -> Bool) -> Spreadsheet -> Int
-countCellsBy f []          = 0
+countCellsBy f [] = 0
 countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
 
-
---6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)). (4 pts)
+--6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)).
 sumRange :: Spreadsheet -> Position -> Position -> Double
-sumRange spreadsheet (x1, y1) (x2, y2) = 
-    sum [evalCell spreadsheet (x, y) | ((x, y), _) <- spreadsheet, x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))]
-
-sumRangeWithReference :: Spreadsheet -> String -> String -> Double
-sumRangeWithReference spreadsheet start end = 
-  sumRange spreadsheet (stringToPosition start) (stringToPosition end)
-
+sumRange spreadsheet (x1, y1) (x2, y2) =
+  sum
+    [ evalCell spreadsheet (x, y)
+    | ((x, y), _) <- spreadsheet
+    , x >= x1
+        && x <= x2
+        && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
+    ]
 
 --7 mapRange that applies a numeric function to all cells in a given range.
-mapRange :: (Double -> Double) -> Spreadsheet -> Position -> Position -> Spreadsheet
+mapRange ::
+     (Double -> Double) -> Spreadsheet -> Position -> Position -> Spreadsheet
 mapRange f spreadsheet (x1, y1) (x2, y2) =
-    map (\(pos, value) -> 
-        if inRange pos 
-        then (pos, applyFunction value) 
-        else (pos, value)) spreadsheet
+  map
+    (\(pos, value) ->
+       if inRange pos
+         then (pos, applyFunction value)
+         else (pos, value))
+    spreadsheet
   where
-    inRange (x, y) = x >= x1 && x <= x2 && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
+    inRange (x, y) =
+      x >= x1
+        && x <= x2
+        && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     applyFunction (Number n) = Number (f n)
 
-mapRangeWithReference :: (Double -> Double) -> Spreadsheet -> String -> String -> Spreadsheet
-mapRangeWithReference f spreadsheet start end =
-  mapRange f spreadsheet (stringToPosition start) (stringToPosition end)
-
 --8 sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
-
 sortCellsByValue :: Spreadsheet -> Spreadsheet
-sortCellsByValue spreadsheet = 
-    sortBy (\(pos1, _) (pos2, _) -> compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2)) spreadsheet
+sortCellsByValue spreadsheet =
+  sortBy
+    (\(pos1, _) (pos2, _) ->
+       compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2))
+    spreadsheet
 
 -- 2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
 -- (1,27) and the reverse operation, i.e., given a position to return the string reference.
-
 stringToPosition :: String -> Position
-stringToPosition s = 
+stringToPosition s =
   let (letters, numbers) = span isLetter s
       x = read numbers :: Int
       y = convertToBase26 letters
-  in (x,y)
+   in (x, y)
 
 positionToString :: Position -> String
-positionToString (x,y) = 
-   convertFromBase26 y ++ show x
-
--- Helper (Could also be done using foldl meaning no helper have to ask prof)
+positionToString (x, y) = convertFromBase26 y ++ show x
 
 convertToBase26 :: String -> Int
-convertToBase26 []     = 0
-convertToBase26 (c:cs) = (ord c - ord 'A' + 1) * (26 ^ length cs) + convertToBase26 cs
+convertToBase26 [] = 0
+convertToBase26 (c:cs) =
+  (ord c - ord 'A' + 1) * (26 ^ length cs) + convertToBase26 cs
 
 convertFromBase26 :: Int -> String
 convertFromBase26 0 = ""
-convertFromBase26 n = 
+convertFromBase26 n =
   let newN = n - 1
       last = chr (ord 'A' + (newN `mod` 26))
       rest = newN `div` 26
-  in convertFromBase26 rest ++ [last]
+   in convertFromBase26 rest ++ [last]
 
 --4. Implement a function that checks whether a spreadsheet has cyclic references and another that
 --   returns the sequences of positions that form cycles (if any). A cyclic reference is a chain of references
 --   that returns to itself, e.g., cell A1 references B1, B1 references C1, and C1 references A1.
-
 hasCyclicReferences :: Spreadsheet -> Bool
 hasCyclicReferences sheet = not $ null $ findCyclicReferences sheet
 
 findCyclicReferences :: Spreadsheet -> [[Position]]
-findCyclicReferences sheet = 
-    let positions = map fst sheet
-        cycles = [findCycleFrom sheet pos [] | pos <- positions]
-    in filter (not . null) cycles
+findCyclicReferences sheet =
+  let positions = map fst sheet
+      cycles = [findCycleFrom sheet pos [] | pos <- positions]
+   in filter (not . null) cycles
 
 -- Helper function to find a cycle starting from a specific position
 findCycleFrom :: Spreadsheet -> Position -> [Position] -> [Position]
 findCycleFrom sheet pos visited
-    | pos `elem` visited = dropWhile (/= pos) (visited ++ [pos]) 
-    | otherwise = 
-        case lookup pos sheet of
-            Nothing -> []  
-            Just cellValue -> 
-                case getReferencedPosition sheet cellValue of
-                    Nothing -> []  
-                    Just nextPos -> findCycleFrom sheet nextPos (pos:visited)
+  | pos `elem` visited = dropWhile (/= pos) (visited ++ [pos])
+  | otherwise =
+    case lookup pos sheet of
+      Nothing -> []
+      Just cellValue ->
+        case getReferencedPosition sheet cellValue of
+          Nothing -> []
+          Just nextPos -> findCycleFrom sheet nextPos (pos : visited)
 
 -- Helper to extract the position referenced by a cell (if any)
 getReferencedPosition :: Spreadsheet -> CellValue -> Maybe Position
 getReferencedPosition sheet (Reference ref) = Just $ stringToPosition ref
-getReferencedPosition sheet (Formula f) = Nothing  
+getReferencedPosition sheet (Formula f) = Nothing
 getReferencedPosition _ _ = Nothing
 
-
-
--- Main test function
-main :: IO ()
-main = do
-  putStrLn "=== Spreadsheet Function Test Suite ==="
-  putStrLn "\n1. Basic Spreadsheet Functions"
-  testEvalCell
-  testUpdateCell
-  testUpdateCellWithReference
-  
-  putStrLn "\n2. Utility Functions"
-  testStringToPosition
-  testPositionToString
-  
-  putStrLn "\n3. Higher-Order Functions"
-  testMapSpreadsheet
-  testFilterCellsByValue
-  testCountCellsBy
-  
-  putStrLn "\n4. Range Operations"
-  testSumRange
-  testSumRangeWithReference
-  testMapRange
-  testMapRangeWithReference
-
-  putStrLn "\n5. Sorting Function"
-  testSortCellsByValue
-
-  putStrLn "=== Spreadsheet Function Test Suite ==="
-  putStrLn "\n6. Cyclic Reference Detection"
-  testCyclicReferences
-
--- Create test spreadsheet
-testSpreadsheet :: Spreadsheet
-testSpreadsheet = 
-  [ ((1, 1), Number 10.0)                             -- A1: 10.0
-  , ((1, 2), Number 20.0)                             -- B1: 20.0
-  , ((1, 3), Number 30.0)                             -- C1: 30.0
-  , ((2, 1), Number 5.0)                              -- A2: 5.0
-  , ((2, 2), Formula (\s -> 2 * evalCell s (1, 1)))   -- B2: =2*A1 (formula that doubles A1)
-  , ((2, 3), Formula (\s -> evalCell s (1, 2) + evalCell s (2, 1))) -- C2: =B1+A2 (formula that adds B1 and A2)
-  , ((3, 1), Number 7.5)                              -- A3: 7.5
-  , ((3, 2), Number 0.0)                              -- B3: 0.0
-  , ((3, 3), Number (-3.5))                           -- C3: -3.5
-  , ((4, 1), Reference "A1")                          -- A4: Reference to A1
-  , ((4, 2), Formula (\s -> evalCell s (4, 1) * 2))   -- B4: Formula that doubles A4's value
+-- Test Data - Sample Spreadsheets
+testSheet1 :: Spreadsheet
+testSheet1 =
+  [ ((1, 1), Number 5)
+  , ((1, 2), Number 10)
+  , ((2, 1), Number 15)
+  , ((2, 2), Formula (\s -> evalCell s (1, 1) + evalCell s (1, 2)))
+  , ((3, 1), Reference "A1")
   ]
 
+testSheetCyclic :: Spreadsheet
+testSheetCyclic =
+  [ ((1, 1), Number 5)
+  , ((1, 2), Reference "B1")
+  , ((2, 1), Reference "A2")
+  , ((2, 2), Reference "A1")
+  ]
 
--- 1. Test evalCell
-testEvalCell :: IO ()
-testEvalCell = do
-  putStrLn "Testing evalCell:"
-  putStrLn $ "A1 (Number): " ++ show (evalCell testSpreadsheet (1, 1))  -- Should be 10.0
-  putStrLn $ "B2 (Formula): " ++ show (evalCell testSpreadsheet (2, 2)) -- Should be 20.0
-  putStrLn $ "C2 (Formula): " ++ show (evalCell testSpreadsheet (2, 3)) -- Should be 25.0
-  putStrLn $ "A4 (Reference): " ++ show (evalCell testSpreadsheet (4, 1)) -- Should be 10.0
-  putStrLn $ "B4 (Formula with Reference): " ++ show (evalCell testSpreadsheet (4, 2)) -- Should be 20.0
+testSheetRange :: Spreadsheet
+testSheetRange =
+  [ ((1, 1), Number 1)
+  , ((1, 2), Number 2)
+  , ((1, 3), Number 3)
+  , ((2, 1), Number 4)
+  , ((2, 2), Number 5)
+  , ((2, 3), Number 6)
+  , ((3, 1), Number 7)
+  , ((3, 2), Number 8)
+  , ((3, 3), Number 9)
+  ]
 
--- 2. Test updateCell
-testUpdateCell :: IO ()
-testUpdateCell = do
-  putStrLn "Testing updateCell:"
-  let updatedSheet = updateCell testSpreadsheet (1, 1) (Number 15.0)
-  putStrLn $ "A1 after update to 15.0: " ++ show (evalCell updatedSheet (1, 1))
-  putStrLn $ "B2 after A1 update (formula should recalculate): " ++ show (evalCell updatedSheet (2, 2))
-  
-  -- Test adding a new cell
-  let expandedSheet = updateCell testSpreadsheet (5, 5) (Number 100.0)
-  putStrLn $ "E5 after adding new cell: " ++ show (evalCell expandedSheet (5, 5))
+-- Test Functions
+-- Test for evalCell
+testEvalCell :: Bool
+testEvalCell =
+  and
+    [ evalCell testSheet1 (1, 1) == 5
+    , evalCell testSheet1 (1, 2) == 10
+    , evalCell testSheet1 (2, 2) == 15 -- Formula cell = A1 + A2
+    , evalCell testSheet1 (3, 1) == 5 -- Reference to A1
+    ]
 
--- 3. Test updateCellWithReference
-testUpdateCellWithReference :: IO ()
-testUpdateCellWithReference = do
-  putStrLn "Testing updateCellWithReference:"
-  let updatedSheet = updateCellWithReference testSpreadsheet "D4" (Number 42.0)
-  putStrLn $ "D4 after update with reference: " ++ show (evalCell updatedSheet (4, 4))
+-- Test for updateCell
+testUpdateCell :: Bool
+testUpdateCell =
+  and [evalCell (updateCell testSheet1 (1, 1) (Number 100)) (1, 1) == 100]
 
--- 4. Test stringToPosition and positionToString
-testStringToPosition :: IO ()
-testStringToPosition = do
-  putStrLn "Testing stringToPosition:"
-  putStrLn $ "A1 -> " ++ show (stringToPosition "A1")  -- Should be (1,1)
-  putStrLn $ "B2 -> " ++ show (stringToPosition "B2")  -- Should be (2,2)
-  putStrLn $ "Z10 -> " ++ show (stringToPosition "Z10")  -- Should be (10,26)
-  putStrLn $ "AA1 -> " ++ show (stringToPosition "AA1")  -- Should be (1,27)
-  putStrLn $ "ZZ99 -> " ++ show (stringToPosition "ZZ99")  -- Should be (99,702)
+-- Test for mapSpreadsheet
+testMapSpreadsheet :: Bool
+testMapSpreadsheet =
+  and
+    [ let doubled =
+            mapSpreadsheet
+              (\v ->
+                 case v of
+                   Number x -> Number (x * 2)
+                   _ -> v)
+              testSheet1
+       in evalCell doubled (1, 1) == 10 && evalCell doubled (1, 2) == 20
+    ]
 
-testPositionToString :: IO ()
-testPositionToString = do
-  putStrLn "Testing positionToString:"
-  putStrLn $ "(1,1) -> " ++ positionToString (1,1)  -- Should be "A1"
-  putStrLn $ "(2,2) -> " ++ positionToString (2,2)  -- Should be "B2"
-  putStrLn $ "(10,26) -> " ++ positionToString (10,26)  -- Should be "Z10"
-  putStrLn $ "(1,27) -> " ++ positionToString (1,27)  -- Should be "AA1"
-  putStrLn $ "(99,702) -> " ++ positionToString (99,702)  -- Should be "ZZ99"
-
-  -- Test roundtrip: string -> position -> string
-  let testRoundtrip str = str ++ " -> " ++ (positionToString $ stringToPosition str)
-  putStrLn "Testing roundtrip conversions:"
-  mapM_ (putStrLn . testRoundtrip) ["A1", "B2", "Z10", "AA1", "ZZ99"]
-
--- 5. Test mapSpreadsheet
-testMapSpreadsheet :: IO ()
-testMapSpreadsheet = do
-  putStrLn "Testing mapSpreadsheet:"
-  
-  -- Double all numeric values
-  let doubledSheet = mapSpreadsheet doubleValue testSpreadsheet
-  putStrLn "After doubling numeric values:"
-  putStrLn $ "A1: " ++ show (evalCell doubledSheet (1, 1))  -- Should be 20.0
-  putStrLn $ "B2 (formula - should still calculate based on doubled A1): " ++ show (evalCell doubledSheet (2, 2))  -- Should be 40.0
-  
-  -- Apply absolute value to all numeric values
-  let absSheet = mapSpreadsheet absValue testSpreadsheet
-  putStrLn "After applying absolute value:"
-  putStrLn $ "C3 (negative number): " ++ show (evalCell absSheet (3, 3))  -- Should be 3.5
-  
-  where
-    doubleValue (Number n) = Number (n * 2)
-    doubleValue x = x  -- Keep formulas unchanged
-    
-    absValue (Number n) = Number (abs n)
-    absValue x = x  -- Keep formulas unchanged
-
--- 6. Test filterCellsByValue
-testFilterCellsByValue :: IO ()
-testFilterCellsByValue = do
-  putStrLn "Testing filterCellsByValue:"
-  
-  -- Filter only numeric cells
-  let numericCells = filterCellsByValue isNumeric testSpreadsheet
-  putStrLn $ "Number of numeric cells: " ++ show (length numericCells)
-  
-  -- Filter only positive numbers
-  let positiveCells = filterCellsByValue isPositive testSpreadsheet
-  putStrLn $ "Number of positive numeric cells: " ++ show (length positiveCells)
-  
-  -- Filter only formula cells
-  let formulaCells = filterCellsByValue isFormula testSpreadsheet
-  putStrLn $ "Number of formula cells: " ++ show (length formulaCells)
-  
-  where
-    isNumeric (Number _) = True
-    isNumeric _ = False
-    
-    isPositive (Number n) = n > 0
-    isPositive _ = False
-    
-    isFormula (Formula _) = True
-    isFormula _ = False
-
--- 7. Test countCellsBy
-testCountCellsBy :: IO ()
-testCountCellsBy = do
-  putStrLn "Testing countCellsBy:"
-  
-  let numericCount = countCellsBy isNumber testSpreadsheet
-  putStrLn $ "Count of numeric cells: " ++ show numericCount
-  
-  let formulaCount = countCellsBy isFormula testSpreadsheet
-  putStrLn $ "Count of formula cells: " ++ show formulaCount
-  
-  let referenceCount = countCellsBy isReference testSpreadsheet
-  putStrLn $ "Count of reference cells: " ++ show referenceCount
-  
-  let positiveCount = countCellsBy isPositive testSpreadsheet
-  putStrLn $ "Count of positive number cells: " ++ show positiveCount
-  
-  let negativeCount = countCellsBy isNegative testSpreadsheet
-  putStrLn $ "Count of negative number cells: " ++ show negativeCount
-  
+-- Test for filterCellsByValue
+testFilterCellsByValue :: Bool
+testFilterCellsByValue =
+  and
+    [ length (filterCellsByValue isNumber testSheet1) == 3
+    , length (filterCellsByValue isFormula testSheet1) == 1
+    , length (filterCellsByValue isReference testSheet1) == 1
+    ]
   where
     isNumber (Number _) = True
     isNumber _ = False
-    
     isFormula (Formula _) = True
     isFormula _ = False
-    
     isReference (Reference _) = True
     isReference _ = False
-    
-    isPositive (Number n) = n > 0
-    isPositive _ = False
-    
-    isNegative (Number n) = n < 0
-    isNegative _ = False
 
--- 8. Test sumRange
-testSumRange :: IO ()
-testSumRange = do
-  putStrLn "Testing sumRange:"
-  
-  -- Sum of all cells
-  let totalSum = sumRange testSpreadsheet (1, 1) (3, 3)
-  putStrLn $ "Sum of all numeric cells (1,1) to (3,3): " ++ show totalSum
-  
-  -- Sum of first row
-  let row1Sum = sumRange testSpreadsheet (1, 1) (1, 3)
-  putStrLn $ "Sum of first row (1,1) to (1,3): " ++ show row1Sum
-  
-  -- Sum of first column
-  let col1Sum = sumRange testSpreadsheet (1, 1) (3, 1)
-  putStrLn $ "Sum of first column (1,1) to (3,1): " ++ show col1Sum
-  
-  -- Sum of 2x2 area
-  let areaSum = sumRange testSpreadsheet (1, 1) (2, 2)
-  putStrLn $ "Sum of 2x2 area (1,1) to (2,2): " ++ show areaSum
-
--- 9. Test sumRangeWithReference
-testSumRangeWithReference :: IO ()
-testSumRangeWithReference = do
-  putStrLn "Testing sumRangeWithReference:"
-  
-  let sum1 = sumRangeWithReference testSpreadsheet "A1" "C3"
-  putStrLn $ "Sum of A1:C3: " ++ show sum1
-  
-  let sum2 = sumRangeWithReference testSpreadsheet "A1" "A3"
-  putStrLn $ "Sum of A1:A3: " ++ show sum2
-
--- 10. Test mapRange
-testMapRange :: IO ()
-testMapRange = do
-  putStrLn "Testing mapRange:"
-  
-  -- Double all values in first row
-  let doubledRow1 = mapRange (*2) testSpreadsheet (1, 1) (1, 3)
-  putStrLn "After doubling first row:"
-  putStrLn $ "A1: " ++ show (evalCell doubledRow1 (1, 1))  -- Should be 20.0
-  putStrLn $ "B1: " ++ show (evalCell doubledRow1 (1, 2))  -- Should be 40.0
-  putStrLn $ "C1: " ++ show (evalCell doubledRow1 (1, 3))  -- Should be 60.0
-  putStrLn $ "A2 (outside range): " ++ show (evalCell doubledRow1 (2, 1))  -- Should remain 5.0
-  
-  -- Make all values in range negative
-  let negativeValues = mapRange negate testSpreadsheet (2, 1) (3, 2)
-  putStrLn "After negating values in range (2,1) to (3,2):"
-  putStrLn $ "A2: " ++ show (evalCell negativeValues (2, 1))  -- Should be -5.0
-  putStrLn $ "B3: " ++ show (evalCell negativeValues (3, 2))  -- Should be -0.0
-  putStrLn $ "A1 (outside range): " ++ show (evalCell negativeValues (1, 1))  -- Should remain 10.0
-
--- 11. Test mapRangeWithReference
-testMapRangeWithReference :: IO ()
-testMapRangeWithReference = do
-  putStrLn "Testing mapRangeWithReference:"
-  
-  let doubledFirstRow = mapRangeWithReference (*2) testSpreadsheet "A1" "C1"
-  putStrLn "After doubling A1:C1 range:"
-  putStrLn $ "A1: " ++ show (evalCell doubledFirstRow (1, 1))
-  putStrLn $ "B1: " ++ show (evalCell doubledFirstRow (1, 2))
-  putStrLn $ "C1: " ++ show (evalCell doubledFirstRow (1, 3))
-
--- 12. Test sortCellsByValue
-testSortCellsByValue :: IO ()
-testSortCellsByValue = do
-  putStrLn "Testing sortCellsByValue:"
-  
-  let sortedSheet = sortCellsByValue testSpreadsheet
-  putStrLn "Cells sorted by value (lowest to highest):"
-  mapM_ (\(pos, _) -> do
-    let val = evalCell testSpreadsheet pos
-    let ref = positionToString pos
-    putStrLn $ ref ++ ": " ++ show val
-    ) sortedSheet
-
--- 13. Test CyclicReferences
-testCyclicReferences :: IO ()
-testCyclicReferences = do
-  putStrLn "Testing cyclic reference detection:"
-
--- Create a spreadsheet with a cycle: A1 -> B1 -> C1 -> A1
-  let cyclicSheet = 
-        [ ((1, 1), Reference "C1")  -- A1 references C1
-        , ((1, 2), Reference "A1")  -- B1 references A1
-        , ((1, 3), Reference "B1")  -- C1 references B1
-        , ((2, 1), Number 5.0)      -- A2: simple value, no cycle
-        , ((2, 2), Reference "A2")  -- B2 references A2, no cycle
-        ]
-  
-  putStrLn $ "Has cycles: " ++ show (hasCyclicReferences cyclicSheet)
-  
-  putStrLn "Cycles found:"
-  let cycles = findCyclicReferences cyclicSheet
-  if null cycles
-    then putStrLn "  No cycles found"
-    else mapM_ (\cycle -> putStrLn $ "  " ++ showCycle cycle) cycles
-  
-  -- Test a non-cyclic spreadsheet
-  let noCycleSheet = 
-        [ ((1, 1), Number 10.0)
-        , ((1, 2), Reference "A1")
-        , ((1, 3), Reference "B1")
-        ]
-  
-  putStrLn $ "\nTesting non-cyclic spreadsheet:"
-  putStrLn $ "Has cycles: " ++ show (hasCyclicReferences noCycleSheet)
-  
+-- Test for countCellsBy
+testCountCellsBy :: Bool
+testCountCellsBy =
+  and
+    [ countCellsBy isNumber testSheet1 == 3
+    , countCellsBy isFormula testSheet1 == 1
+    ]
   where
-    showCycle cycle = 
-      concatMap (\pos -> positionToString pos ++ " → ") (init cycle) ++
-      positionToString (last cycle)
+    isNumber (Number _) = True
+    isNumber _ = False
+    isFormula (Formula _) = True
+    isFormula _ = False
+
+-- Test for sumRange
+testSumRange :: Bool
+testSumRange =
+  and
+    [ sumRange testSheetRange (1, 2) (3, 1) == 27 -- 2+3+4+5+6+7
+    ]
+
+-- Test for mapRange
+testMapRange :: Bool
+testMapRange =
+  and
+    [ let doubled = mapRange (* 2) testSheetRange (1, 1) (2, 2)
+       in evalCell doubled (1, 1) == 2 && evalCell doubled (2, 2) == 10
+    ]
+
+-- Test for sortCellsByValue
+testSortCellsByValue :: Bool
+testSortCellsByValue =
+  let sorted = sortCellsByValue testSheet1
+      values = map (evalCell testSheet1 . fst) sorted
+   in values == [5, 5, 10, 15, 15] -- 5 appears twice due to original and reference
+
+-- Test for string/position conversion
+testStringConversion :: Bool
+testStringConversion =
+  and
+    [ stringToPosition "A1" == (1, 1)
+    , stringToPosition "B10" == (10, 2)
+    , stringToPosition "AA1" == (1, 27)
+    , positionToString (1, 1) == "A1"
+    , positionToString (10, 2) == "B10"
+    , positionToString (1, 27) == "AA1"
+    ]
+
+-- Test for cycle detection
+testCycleDetection :: Bool
+testCycleDetection =
+  and
+    [ not (hasCyclicReferences testSheet1)
+    , hasCyclicReferences testSheetCyclic
+    , length (findCyclicReferences testSheetCyclic) > 0
+    ]
+
+-- Run all tests
+runAllTests :: [(String, Bool)]
+runAllTests =
+  [ ("evalCell", testEvalCell)
+  , ("updateCell", testUpdateCell)
+  , ("mapSpreadsheet", testMapSpreadsheet)
+  , ("filterCellsByValue", testFilterCellsByValue)
+  , ("countCellsBy", testCountCellsBy)
+  , ("sumRange", testSumRange)
+  , ("mapRange", testMapRange)
+  , ("sortCellsByValue", testSortCellsByValue)
+  , ("stringConversion", testStringConversion)
+  , ("cycleDetection", testCycleDetection)
+  ]
+
+-- Main test function
+testSpreadsheet :: IO ()
+testSpreadsheet = do
+  putStrLn "Running spreadsheet tests..."
+  let results = runAllTests
+  mapM_
+    (\(name, result) ->
+       putStrLn
+         $ name
+             ++ ": "
+             ++ if result
+                  then "PASS"
+                  else "FAIL")
+    results
+  putStrLn
+    $ "Tests passed: "
+        ++ show (length (filter snd results))
+        ++ "/"
+        ++ show (length results)
+
+-- For easy testing in GHCi
+main :: IO ()
+main = testSpreadsheet
