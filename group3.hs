@@ -62,7 +62,7 @@ sortAcesLast (x:xs) =
       rest = sortAcesLast [a | a <- xs, rank a /= mkRank Ace]
    in rest ++ [x] ++ aces
 
--- Functionality (Chatzopoulos)
+-- Functionality 
 faceCards :: Hand -> Integer
 faceCards [] = 0
 faceCards (x:xs)
