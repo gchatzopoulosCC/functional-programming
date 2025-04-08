@@ -286,7 +286,7 @@ avgYearsWorked emps =
 data CellValue
   = Number Double
   | Formula (Spreadsheet -> Double)
-  | Reference String
+  | Reference String -- 2.1. Extend CellValue with a new constructor for referencing another cell with a string identifier.
 
 instance Show CellValue where
   show (Number x) = show x
@@ -305,15 +305,15 @@ cellValue ((pos, value):tail) position =
     then value
     else cellValue tail position
 
--- 1. evalCell that evaluates the value of a cell in given the position of the spreadsheet.
+-- 1.1. evalCell that evaluates the value of a cell in given the position of the spreadsheet.
 evalCell :: Spreadsheet -> Position -> Double
 evalCell sheet position =
   case cellValue sheet position of
     Number x -> x
     Formula f -> f sheet
-    Reference r -> evalCell sheet (stringToPosition r)
+    Reference r -> evalCell sheet (stringToPosition r) -- 2.3. Adjust any functions you have implemented to work with the new cell type of reference.
 
--- 2. updateCell that updates or adds a cell in the spreadsheet in the given position.
+-- 1.2. updateCell that updates or adds a cell in the spreadsheet in the given position.
 updateCell :: Spreadsheet -> Position -> CellValue -> Spreadsheet
 updateCell [] position value = [(position, value)]
 updateCell sheet position value =
@@ -322,21 +322,21 @@ updateCell sheet position value =
         [] -> before ++ [(position, value)]
         ((_, _):rest) -> before ++ [(position, value)] ++ rest
 
--- 3. mapSpreadsheet that applies a function to all cells in the spreadsheet.
+-- 1.3. mapSpreadsheet that applies a function to all cells in the spreadsheet.
 mapSpreadsheet :: (CellValue -> CellValue) -> Spreadsheet -> Spreadsheet
 mapSpreadsheet f spreadsheet =
   map (\(position, value) -> (position, f value)) spreadsheet
 
--- 4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet.
+-- 1.4. filterCellsByValue that filters cell values that match a predicate on the given spreadsheet.
 filterCellsByValue :: (CellValue -> Bool) -> Spreadsheet -> Spreadsheet
 filterCellsByValue f spreadsheet = filter (\(_, value) -> f value) spreadsheet
 
--- 5. countCellsBy that counts the cells that match a predicate.
+-- 1.5. countCellsBy that counts the cells that match a predicate.
 countCellsBy :: (CellValue -> Bool) -> Spreadsheet -> Int
 countCellsBy f [] = 0
 countCellsBy f spreadsheet = length (filterCellsByValue f spreadsheet)
 
--- 6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)).
+-- 1.6. sumRange that sums the values of all cells in a given range (e.g., from (1, 1) to (3, 3)).
 sumRange :: Spreadsheet -> Position -> Position -> Double
 sumRange spreadsheet (x1, y1) (x2, y2) =
   sum
@@ -347,7 +347,7 @@ sumRange spreadsheet (x1, y1) (x2, y2) =
         && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     ]
 
--- 7. mapRange that applies a numeric function to all cells in a given range.
+-- 1.7. mapRange that applies a numeric function to all cells in a given range.
 mapRange ::
      (Double -> Double) -> Spreadsheet -> Position -> Position -> Spreadsheet
 mapRange f spreadsheet (x1, y1) (x2, y2) =
@@ -364,7 +364,7 @@ mapRange f spreadsheet (x1, y1) (x2, y2) =
         && ((x == x1 && y >= y1) || (x == x2 && y <= y2) || (x > x1 && x < x2))
     applyFunction (Number n) = Number (f n)
 
--- 8. sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
+-- 1.8. sortCellsByValue that sorts the spreadsheet based on the numeric cell values. The positions of the cells remain unchanged.
 sortCellsByValue :: Spreadsheet -> Spreadsheet
 sortCellsByValue spreadsheet =
   sortBy
@@ -372,7 +372,7 @@ sortCellsByValue spreadsheet =
        compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2))
     spreadsheet
 
--- 2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
+-- 2.2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
 -- (1,27) and the reverse operation, i.e., given a position to return the string reference.
 stringToPosition :: String -> Position
 stringToPosition s =
@@ -397,7 +397,7 @@ convertFromBase26 n =
       rest = newN `div` 26
    in convertFromBase26 rest ++ [last]
 
--- 4. Implement a function that checks whether a spreadsheet has cyclic references and another that
+-- 2.4. Implement a function that checks whether a spreadsheet has cyclic references and another that
 -- returns the sequences of positions that form cycles (if any). A cyclic reference is a chain of references
 -- that returns to itself, e.g., cell A1 references B1, B1 references C1, and C1 references A1.
 hasCyclicReferences :: Spreadsheet -> Bool
