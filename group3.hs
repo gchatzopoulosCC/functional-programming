@@ -1,3 +1,6 @@
+----------------------------------------------------------------------------------------------------------
+-- GROUP 03 FUNCTIONAL PROGRAMMING COURSEWORK
+---------------------------------------------------------------------------------------------------------
 -- IMPORTS
 import Data.Char (chr, isLetter, ord)
 import Data.List (groupBy, maximumBy, sortBy, sortOn)
@@ -7,14 +10,14 @@ import Text.Printf (printf)
 -- BLACKJACK
 ----------------------------------------------------------------------------------------------------------
 -- Types
-data Suit
+data Suit -- Suit, the suit of a card: hearts, spades, diamonds, and clubs.
   = Hearts
   | Spades
   | Diamonds
   | Clubs
   deriving (Show, Eq, Ord)
 
-data Rank
+data Rank -- Rank, the rank of a card: numeric and its value (2-10), jack, queen, king, and ace.
   = Numeric Integer
   | Jack
   | Queen
@@ -22,14 +25,14 @@ data Rank
   | Ace
   deriving (Show, Eq, Ord)
 
-data Card = Card
+data Card = Card -- Card, the card itself which has a rank and a suit..
   { rank :: Maybe Rank
   , suit :: Suit
   } deriving (Show, Eq, Ord)
 
-type Hand = [Card]
+type Hand = [Card] -- Hand, the hand of a player which is a list of cards, a type synonym will suffice.
 
-data Player
+data Player -- Player, either bank or guest.
   = Bank
   | Guest
   deriving (Show, Eq, Ord)
@@ -62,13 +65,16 @@ sortAcesLast (x:xs) =
       rest = sortAcesLast [a | a <- xs, rank a /= mkRank Ace]
    in rest ++ [x] ++ aces
 
--- Functionality 
+-- Functionality
+-- 1. Define a function faceCards :: Hand -> Integer that returns the number of face cards in the hand. 
 faceCards :: Hand -> Integer
 faceCards [] = 0
 faceCards (x:xs)
   | isFaceCard x = 1 + faceCards xs
   | otherwise = faceCards xs
 
+-- 2. Define a function value :: Hand -> Integer that calculates the total value of a hand but if the value
+-- exceeds 21, turn the hand&#39;s aces into 1s instead of 11s.
 value :: Hand -> Integer
 value hand = go (sortAcesLast hand) 0
   where
@@ -84,23 +90,32 @@ value hand = go (sortAcesLast hand) 0
            in go xs (total + aceValue) -- An ace should be 1 if total + 11 > 21 or a second card (Ace) follows after (to prevent cases like: Jack, Ace, Ace being 22)
         _ -> go xs (total + 10)
 
+-- 3. Define a function isBlackjack :: Hand -> Bool that determines whether the hand forms a blackjack. A
+-- blackjack is hand with 2 cards that has the value of 21.
 isBlackjack :: Hand -> Bool
 isBlackjack [] = False
 isBlackjack hand = len hand == 2 && value hand == 21
 
+-- 4. Define a function gameOver :: Hand -> Bool that checks if the given hand loses (value greater than
+-- 21).
 gameOver :: Hand -> Bool
 gameOver [] = True
 gameOver hand = value hand > 21
 
+-- 5. Define a function winner :: Hand -> Hand -> Player given the guest hand and the bank hand returns
+-- the player who won. Tie goes to the bank.
 winner :: Hand -> Hand -> Player
 winner player bank
   | gameOver player || (value player <= value bank) = Bank
   | otherwise = Guest
 
+-- 6. Define an operator (<+) :: Hand -> Hand -> Hand that places the first hand on top of the other and
+-- returns the resulting hand.
 (<+) :: Hand -> Hand -> Hand
 (<+) first second = first ++ second
 
--- Functionality
+-- 7. Define a function handSuit :: Suit -> Hand that given a suit, returns a hand with all 13 cards of that
+-- suit.
 handSuit :: Suit -> Hand
 handSuit suit =
   [Card (mkRank (Numeric n)) suit | n <- [2 .. 10]]
@@ -110,18 +125,25 @@ handSuit suit =
        , Card (mkRank Ace) suit
        ]
 
+-- 8. Define a function belongsTo :: Card -> Hand -> Bool that given a card and a hand checks whether
+-- the card is in this hand.
 belongsTo :: Card -> Hand -> Bool
 belongsTo card [] = False
 belongsTo card (x:xs) = card == x || belongsTo card xs
 
+-- 9. Define a value fullDeck :: Hand that consists of the 52 card complete deck.
 fullDeck :: Hand
 fullDeck =
   handSuit Hearts <+ handSuit Spades <+ handSuit Diamonds <+ handSuit Clubs
 
+-- 10. Define a function draw :: Hand -> Hand -> (Hand, Hand) that given a deck and a hand, draws a card
+-- from the deck and returns the remaining deck and the new hand. Throw an error if the deck is empty.
 draw :: Hand -> Hand -> (Hand, Hand)
 draw [] _ = error "Cannot draw from an empty deck"
 draw (card:remainingDeck) hand = (remainingDeck, card : hand)
 
+-- 11. Define a function playBank :: Hand -> Hand -> Hand that given the deck and the current bank&#39;s hand
+-- plays a move for the bank. The bank&#39;s logic is to draw if the current score is less than 16.
 playBank :: Hand -> Hand -> Hand
 playBank deck bankHand
   | value bankHand < 16 =
@@ -182,16 +204,19 @@ currDate = Date 2025 3 26
 (===) emp1 emp2 =
   yearDiff (joinedOn emp1) currDate == yearDiff (joinedOn emp2) currDate
 
+-- Group employees based on their tenure
 groupByTenure :: [Employee] -> [[Employee]]
 groupByTenure emps = groupBy (===) (sortOn tenureYears emps)
   where
     tenureYears emp = yearDiff (joinedOn emp) currDate -- Sort for better grouping
 
+-- Create tuples of an employee and their tenure from a list of employees
 assignTenure :: [Employee] -> (Int, [Employee])
 assignTenure emps = (getYear, emps)
   where
     getYear = yearDiff (joinedOn (head emps)) currDate
 
+-- Calculate tenure of an employee in years
 calculateTenure :: Employee -> Int
 calculateTenure emp =
   let endDate =
@@ -200,6 +225,7 @@ calculateTenure emp =
           Nothing -> currDate
    in yearDiff (joinedOn emp) endDate
 
+-- Calculate year difference between two dates
 yearDiff :: Date -> Date -> Int
 yearDiff date1 date2 = year date2 - year date1
 
@@ -402,7 +428,7 @@ getReferencedPosition sheet (Formula f) = Nothing
 getReferencedPosition _ _ = Nothing
 
 ----------------------------------------------------------------------------------------------------------
--- TESTERS
+-- TESTERS (run main in ghci for ease of use)
 ----------------------------------------------------------------------------------------------------------
 -- Test data
 testCard1 :: Card
