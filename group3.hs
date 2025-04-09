@@ -372,6 +372,55 @@ sortCellsByValue spreadsheet =
        compare (evalCell spreadsheet pos1) (evalCell spreadsheet pos2))
     spreadsheet
 
+----------------------------------------------------------------------------------------------------------
+-- SPREADSHEET QUERIES AND OUTPUT
+----------------------------------------------------------------------------------------------------------
+-- Test data for the spreadsheet
+spreadsheetTest :: Spreadsheet
+spreadsheetTest =
+  [ ((1, 1), Number 42)
+  , ((1, 2), Number 15)
+  , ((1, 3), Number 27)
+  , ((2, 1), Number 8)
+  , ((2, 2), Number 19)
+  , ((2, 3), Number 33)
+  , ((3, 1), Number 56)
+  , ((3, 2), Number 72)
+  , ((3, 3), Number 91)
+  , ((4, 1), Number 5)
+  , ((4, 2), Number 18)
+  , ((5, 5), Number 64)
+  ]
+
+-- ghci> evalCell spreadsheetTest (2,2) 
+-- 19.0
+
+-- ghci> updateCell spreadsheetTest (2,2) (Number 12)
+-- [((1,1),42.0),((1,2),15.0),((1,3),27.0),((2,1),8.0),((2,2),12.0),((2,3),33.0),((3,1),56.0),((3,2),72.0),((3,3),91.0),((4,1),5.0),((4,2),18.0),((5,5),64.0)]
+
+-- ghci> mapSpreadsheet (\x -> case x of Number n -> Number (n * 2); _ -> x) spreadsheetTest
+-- [((1,1),84.0),((1,2),30.0),((1,3),54.0),((2,1),16.0),((2,2),38.0),((2,3),66.0),((3,1),112.0),((3,2),144.0),((3,3),182.0),((4,1),10.0),((4,2),36.0),((5,5),128.0)]
+
+-- ghci> mapSpreadsheet (\x -> case x of Number n -> Number (n + 5); _ -> x) spreadsheetTest
+-- [((1,1),47.0),((1,2),20.0),((1,3),32.0),((2,1),13.0),((2,2),24.0),((2,3),38.0),((3,1),61.0),((3,2),77.0),((3,3),96.0),((4,1),10.0),((4,2),23.0),((5,5),69.0)]
+
+-- ghci> filterCellsByValue (\x -> case x of Number n -> n > 50; _ -> False) spreadsheetTest
+-- [((3,1),56.0),((3,2),72.0),((3,3),91.0),((5,5),64.0)]
+
+-- ghci> countCellsBy (\x -> case x of Number n -> n > 50; _ -> False) spreadsheetTest
+-- 4
+
+-- ghci> sumRange spreadsheetTest (1,3) (3,1)
+-- 143.0
+
+-- ghci> mapRange (\n -> n + 10) spreadsheetTest (2, 1) (2, 3)
+-- [((1,1),42.0),((1,2),15.0),((1,3),27.0),((2,1),18.0),((2,2),29.0),((2,3),43.0),((3,1),56.0),((3,2),72.0),((3,3),91.0),((4,1),5.0),((4,2),18.0),((5,5),64.0)]
+
+-- ghci> sortCellsByValue spreadsheetTest
+-- [((4,1),5.0),((2,1),8.0),((1,2),15.0),((4,2),18.0),((2,2),19.0),((1,3),27.0),((2,3),33.0),((1,1),42.0),((3,1),56.0),((5,5),64.0),((3,2),72.0),((3,3),91.0)]
+----------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------
 -- 2.2. Implement parsing functions that take a string (e.g., “AA1”) and return the position as row and column
 -- (1,27) and the reverse operation, i.e., given a position to return the string reference.
 stringToPosition :: String -> Position
